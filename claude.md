@@ -1,7 +1,7 @@
 # Turret Game - Project Definition
 
 ## Game Overview
-A 2D top-down roguelike wave hunting game with economic strategy and automated turret systems. Hunt down fleeing enemies as fast as possible in time-attack waves where YOU are the predator.
+A 2D top-down roguelike wave game blending hunting and survival with economic strategy and automated turret systems. Hunt down fleeing enemies while avoiding dangerous pursuers - a dual-threat gameplay loop.
 
 ## Core Design Principles
 - **System-heavy**: Focus on gameplay systems over content creation
@@ -14,40 +14,35 @@ A 2D top-down roguelike wave hunting game with economic strategy and automated t
 3. Variable rewards - unpredictable positive outcomes
 4. "One more round" syndrome - sessions under 5 minutes
 5. Compound progression - small advantages stack exponentially
-6. Speedrun optimization - time-based leaderboards create competition
-7. Perfect runs - reward optimal pathing and hunting strategy
 
 ## Game Loop
-1. **Wave Phase**: Hunt down fleeing enemies using turrets and strategic positioning
-2. **Build Phase**: Spend collected resources on turrets/systems/upgrades to hunt faster
-3. **Repeat**: Waves escalate in difficulty (more/faster enemies), economy compounds
-4. **Death**: Run ends, but primary challenge is SPEED not survival
-5. **Victory**: Complete wave when all enemies eliminated - score based on completion time
+1. **Wave Phase**: Hunt fleeing enemies while avoiding pursuers, turrets provide firepower
+2. **Build Phase**: Spend collected resources on turrets/systems/upgrades
+3. **Repeat**: Waves escalate in difficulty (more enemies, mixed threat types), economy compounds
+4. **Death**: Run ends, meta-progression unlocks persist
 
 ## Core Mechanics
 
 ### Player Control
 - **Movement only** - WASD movement, no direct combat
-- Player actively hunts and herds enemies toward turrets
-- Positioning is strategic (cutting off escape routes, corralling prey)
-- Success depends on movement skill, turret placement, and hunting efficiency
+- Player actively hunts fleeing enemies while dodging pursuers
+- Positioning is strategic (herding prey toward turrets, avoiding hunters)
+- Success requires balancing offensive hunting with defensive survival
 
 ### Perspective
 - **Top-down view**
 - 360° threat awareness
 - Clear turret placement visualization
 
-### Enemy Behavior (Prey Dynamics)
-- **Enemies FLEE from player and turrets** - evasion AI, not aggression
-- Enemies attempt to escape and survive
-- Different enemy types have different evasion strategies (fast runners, erratic dodgers, etc.)
-- Player becomes the threat, reversing traditional predator/prey dynamics
-
-### Victory Condition
-- Wave complete when ALL enemies are eliminated
-- Score based on completion TIME (faster = better)
-- Faster kills = better upgrades and more meta-currency
-- Death still ends run, but optimal play focuses on speed
+### Enemy Behavior (Dual-Threat System)
+- **Two enemy archetypes with opposite behaviors:**
+  - **PREY (majority ~80%)**: FLEE from player and turrets - evasion AI, must be hunted down
+  - **HUNTERS (minority ~20%)**: CHASE the player - aggressive pursuit AI, create survival pressure
+- Creates dynamic tension: hunt the many while avoiding the few
+- Different enemy types have different behaviors within each archetype
+  - Prey: fast runners, erratic dodgers, teleporters
+  - Hunters: fast rushers, tanky bruisers, trappers
+- Player must balance offensive hunting with defensive survival
 
 ### Economy System (Dual-Source)
 - **Combat drops**: Killing enemies drops resources (incentivizes aggression)
@@ -92,10 +87,11 @@ TurretGame.Core (no dependencies)
 
 ## Sprint 1 Goals (Current Focus)
 1. Player entity with WASD movement ✓
-2. Single enemy type with basic AI (FLEE from player) - DESIGN PIVOT
+2. Enemy entity with chase AI (HUNTER type) ✓
 3. Collision detection system ✓
-4. Resource drop on enemy death
-5. Simple resource counter UI display
+4. Add flee AI (PREY type) - in progress
+5. Resource drop on enemy death
+6. Simple resource counter UI display
 
 ---
 
@@ -103,26 +99,29 @@ TurretGame.Core (no dependencies)
 
 ### Decided
 - Genre: 2D system-heavy, mechanic-focused
-- **Hybrid archetype: Wave hunting + economic strategy + time attack**
-- **Core dynamic: PREDATOR (player) hunts PREY (enemies)**
+- **Hybrid archetype: Wave hunting/survival + economic strategy** - unique dual-threat system
+- **Core dynamic: HUNT fleeing enemies while SURVIVING pursuing enemies**
 - Roguelike structure with meta-progression
-- Player control: Movement/herding only (no direct combat)
+- Player control: Movement only (no direct combat) - offensive and defensive positioning
 - Perspective: Top-down
 - Economy: Dual-source (combat drops + passive generators)
-- **Victory condition: Time-based scoring (eliminate all enemies FAST)**
-- **Enemy AI: Flee/evade behavior (not chase/attack)**
+- **Enemy AI: Dual-Threat System**
+  - **80% PREY** - flee from player/turrets (hunting gameplay)
+  - **20% HUNTERS** - chase player (survival gameplay)
 - Working title: "Turret Game"
 
 ### Major Design Pivots
-- **Sprint 1.2 Pivot**: Changed from "survive enemy attacks" to "hunt fleeing enemies"
-- Inverted predator/prey relationship - player is now the threat
-- Primary challenge shifted from survival to speed optimization
+- **Sprint 1.2 Initial Pivot**: Considered "hunt fleeing enemies only" time-attack gameplay
+- **Sprint 1.2 Reversal**: Considered "traditional survival only" with all enemies chasing
+- **Sprint 1.2 Final Decision**: Hybrid system with BOTH flee and chase enemies
+- Creates unique tension: offensive hunting vs defensive survival simultaneously
+- Primary challenge: Balancing aggression (hunt prey) with caution (avoid hunters)
 
 ### To Be Decided
+- Exact ratio of prey vs hunters (starting at 80/20)
 - Specific turret types and upgrade paths
 - Meta-progression unlock structure
-- Enemy evasion variety and behavior patterns
-- Wave scaling formulas (number/speed of prey)
-- Time-based scoring and reward tiers
-- Art style and visual direction
+- Enemy variety within each archetype
+- Wave scaling formulas (how ratios change per wave)
+- Art style and visual direction (must distinguish prey from hunters clearly)
 - Audio design approach

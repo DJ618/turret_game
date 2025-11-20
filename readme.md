@@ -1,15 +1,14 @@
 # TurretGame - MVP Development Roadmap
 
 ## MVP Definition
-Playable game demonstrating the core addictive loop: hunt fleeing enemies, optimize kill time, collect resources, place turrets, get faster, compete for best times.
+Playable game demonstrating the core addictive loop: hunt fleeing enemies while avoiding pursuers, collect resources, place turrets, get stronger, balance offense and defense.
 
-**CORE DYNAMIC: Player is PREDATOR, enemies are PREY**
+**CORE DYNAMIC: HUNT the many (prey) while SURVIVING the few (hunters)**
 
 **MVP Success Criteria:**
 - 3-5 minute runs feel complete
-- Player wants to optimize "one more run" for better time
-- Core hunting loop is functional and satisfying
-- Time-attack scoring creates replay motivation
+- Player wants to try "one more run"
+- Dual-threat gameplay (hunting + survival) is functional and creates tension
 
 ## Technical Stack
 - **.NET 8.0** (LTS)
@@ -18,20 +17,24 @@ Playable game demonstrating the core addictive loop: hunt fleeing enemies, optim
 
 ---
 
-## MAJOR DESIGN PIVOT (Sprint 1.2)
+## DESIGN EVOLUTION (Sprint 1.2)
 
-**OLD CONCEPT**: Survive waves of enemies chasing you
-**NEW CONCEPT**: Hunt down enemies that flee from you
+**ORIGINAL CONCEPT**: Survive waves of enemies chasing you (traditional survival)
+**ATTEMPTED PIVOT**: Hunt down enemies that flee from you (pure hunting)
+**FINAL DECISION**: Hybrid system with BOTH enemy types
 
-**What Changed:**
-- Enemies now FLEE from player and turrets (evasion AI)
-- Player is the PREDATOR, enemies are PREY
-- Primary challenge is SPEED not survival
-- Victory = eliminate all enemies FAST (time-attack)
-- Scoring based on completion time
-- Gameplay loop: Hunt → Optimize → Compete for best times
+**Dual-Threat System:**
+- **~80% PREY enemies**: FLEE from player and turrets - must be hunted down
+- **~20% HUNTER enemies**: CHASE the player - must be avoided
+- Creates unique tension: offensive hunting vs defensive survival
+- Player balances aggression (chase prey) with caution (avoid hunters)
+- Gameplay loop: Hunt → Survive → Build → Repeat with more threats
 
-This inverts the traditional predator/prey relationship and shifts focus from defensive survival to aggressive hunting optimization.
+**Why this works:**
+- Combines best of both designs: hunting gameplay + survival pressure
+- Creates dynamic positioning challenges
+- Visual clarity needed to distinguish prey (green?) from hunters (red?)
+- More interesting than pure survival or pure hunting alone
 
 ---
 
@@ -44,31 +47,31 @@ This inverts the traditional predator/prey relationship and shifts focus from de
 - Basic rendering (colored rectangle for player)
 - **Deliverable**: Player moves around empty screen
 
-### Sprint 1.2: Enemy Basics
-- Enemy entity (position, velocity, health)
-- **FLEE AI (move AWAY from player) - DESIGN PIVOT**
-- Spawning system (spawn at screen edges)
+### Sprint 1.2: Enemy Basics & Dual AI
+- Enemy entity (position, velocity, health, type)
+- **HUNTER AI** (move TOWARD player) - chase/pursuit behavior
+- **PREY AI** (move AWAY from player) - flee/evade behavior
+- Spawning system (spawn at screen edges, 80% prey / 20% hunters)
 - Basic collision detection (circle-based)
-- **Deliverable**: Enemy flees from player, collision detected
+- **Deliverable**: Two enemy types with opposite behaviors, collision detected
 
 ### Sprint 1.3: Combat & Resources
 - Enemy death on collision with player (placeholder for turret damage)
 - Resource drop entity (pickups)
 - Player collection on overlap
 - Resource counter UI
-- Wave timer display
-- **Deliverable**: Hunt enemy → collect resource → counter updates, time tracked
+- **Deliverable**: Kill enemy → collect resource → counter updates
 
 ---
 
 ## Phase 2: Core Loop (Weeks 3-4)
 
 ### Sprint 2.1: Wave System
-- Wave state machine (hunt → build → next wave)
-- Wave timer (tracks completion time for scoring)
-- Enemy spawning (X enemies per wave, increases each wave)
-- Wave completion detection (all enemies eliminated)
-- **Deliverable**: Hunt all enemies → record time → build phase → next wave
+- Wave state machine (preparation → wave → build)
+- Wave timer/counter
+- Enemy spawning (X enemies per wave, increases each wave, maintains ~80/20 prey/hunter ratio)
+- Wave completion detection
+- **Deliverable**: Waves spawn with mixed enemy types, escalate, pause for build phase
 
 ### Sprint 2.2: Turret Placement
 - Turret entity (position, range, damage, fire rate)
@@ -78,11 +81,11 @@ This inverts the traditional predator/prey relationship and shifts focus from de
 - **Deliverable**: Place turrets, they appear on field
 
 ### Sprint 2.3: Turret Combat
-- Target acquisition (find nearest fleeing enemy in range)
+- Target acquisition (find nearest enemy in range, regardless of type)
 - Projectile entity (position, velocity, damage)
 - Projectile-enemy collision
 - Enemy health/death from turret damage
-- **Deliverable**: Turrets help hunt down and eliminate fleeing enemies
+- **Deliverable**: Turrets shoot and kill both prey and hunter enemies
 
 ---
 
@@ -103,10 +106,11 @@ This inverts the traditional predator/prey relationship and shifts focus from de
 - **Deliverable**: Choose upgrades, see immediate effects
 
 ### Sprint 3.3: Difficulty Scaling
-- Wave scaling formula (more enemies, faster flee speed, better evasion)
+- Wave scaling formula (total enemies, health, speed for both types)
+- Prey/Hunter ratio adjustments (e.g., more hunters at higher waves?)
 - Resource drop scaling
-- Balance tuning (ensure challenging hunt times increase progressively)
-- **Deliverable**: Enemies become harder to hunt, more evasive each wave
+- Balance tuning (dual threat becomes overwhelming around wave 10-15)
+- **Deliverable**: Both hunting and survival challenges escalate appropriately
 
 ---
 
@@ -146,13 +150,15 @@ This inverts the traditional predator/prey relationship and shifts focus from de
 ---
 
 ## Post-MVP Expansion Ideas (Future)
-- More turret types (AOE, slow/trap, guided missiles)
-- More enemy evasion types (fast runners, erratic dodgers, teleporters)
-- Boss hunts every 5 waves (ultra-evasive prey)
-- Map obstacles/terrain (creates escape routes and chokepoints)
-- Player abilities (dash for closing distance, temporary speed boost)
-- Global leaderboards for best times per wave
-- Replay system to study optimal hunting patterns
+- More turret types (AOE, slow/trap for prey, stun/knockback for hunters, guided missiles)
+- More enemy types within each archetype:
+  - PREY variants: fast runners, erratic dodgers, teleporters, burrowers
+  - HUNTER variants: fast rushers, tanky bruisers, trappers, ambushers
+- Boss waves every 5 waves (ultra-evasive prey + elite hunter combo)
+- Map obstacles/terrain (creates escape routes for prey, ambush points for hunters)
+- Player abilities (dash for closing distance on prey, shield/dodge for avoiding hunters)
+- Dynamic prey/hunter ratios (waves could be all-hunters for intense survival)
+- Upgrades that specifically benefit against prey vs hunters
 
 ---
 

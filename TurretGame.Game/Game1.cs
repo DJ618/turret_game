@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -9,15 +10,24 @@ using XnaVector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace TurretGame.Game;
 
+public enum GameState
+{
+    Playing,
+    GameOver
+}
+
 public class Game1 : Microsoft.Xna.Framework.Game
 {
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
     private Player _player;
-    private Enemy _enemy;
+    private List<Enemy> _enemies;
     private Texture2D _playerTexture;
-    private Texture2D _enemyTexture;
+    private Texture2D _hunterTexture;
+    private Texture2D _preyTexture;
     private Random _random;
+    private GameState _gameState;
+    private Texture2D _gameOverTexture;
 
     public Game1()
     {
@@ -25,6 +35,8 @@ public class Game1 : Microsoft.Xna.Framework.Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         _random = new Random();
+        _enemies = new List<Enemy>();
+        _gameState = GameState.Playing;
     }
 
     protected override void Initialize()
@@ -52,17 +64,35 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
         // Create textures
         _playerTexture = CreateCircleTexture(GraphicsDevice, (int)_player.Radius, Color.Cyan);
+        _hunterTexture = CreateCircleTexture(GraphicsDevice, 15, Color.Red);
+        _preyTexture = CreateCircleTexture(GraphicsDevice, 15, Color.Green);
 
-        // Spawn enemy at random edge
-        var enemyPosition = GetRandomEdgePosition();
-        _enemy = new Enemy(enemyPosition);
-        _enemyTexture = CreateCircleTexture(GraphicsDevice, (int)_enemy.Radius, Color.Red);
+        // Create game over overlay texture (semi-transparent red)
+        _gameOverTexture = new Texture2D(GraphicsDevice, 1, 1);
+        _gameOverTexture.SetData(new[] { new Color(255, 0, 0, 180) });
+
+        // Spawn 2 enemies: 1 Hunter (chaser) and 1 Prey (fleer)
+        // Hunter at 50% player speed (100f), Prey at 80% player speed (160f)
+        var hunterPosition = GetRandomEdgePosition();
+        var hunter = new Enemy(hunterPosition, EnemyType.Hunter, 100f);
+        _enemies.Add(hunter);
+
+        var preyPosition = GetRandomEdgePosition();
+        var prey = new Enemy(preyPosition, EnemyType.Prey, 160f);
+        _enemies.Add(prey);
     }
 
     protected override void Update(GameTime gameTime)
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
+
+        // Don't update game if it's over
+        if (_gameState == GameState.GameOver)
+        {
+            base.Update(gameTime);
+            return;
+        }
 
         // Read WASD input
         var keyboardState = Keyboard.GetState();
@@ -88,15 +118,34 @@ public class Game1 : Microsoft.Xna.Framework.Game
             GraphicsDevice.Viewport.Height
         );
 
-        // Update enemy to chase player
-        _enemy.Update(_player.Position, deltaTime);
-
-        // Check collision between player and enemy
-        if (_enemy.IsAlive && CollisionDetection.CircleToCircle(
-            _player.Position, _player.Radius,
-            _enemy.Position, _enemy.Radius))
+        // Update all enemies (hunters chase, prey flee)
+        foreach (var enemy in _enemies)
         {
-            _enemy.IsAlive = false;
+            enemy.Update(
+                _player.Position,
+                deltaTime,
+                0,
+                GraphicsDevice.Viewport.Width,
+                0,
+                GraphicsDevice.Viewport.Height
+            );
+
+            // Check collision between player and this enemy
+            if (enemy.IsAlive && CollisionDetection.CircleToCircle(
+                _player.Position, _player.Radius,
+                enemy.Position, enemy.Radius))
+            {
+                if (enemy.Type == EnemyType.Hunter)
+                {
+                    // Collision with hunter = game over
+                    _gameState = GameState.GameOver;
+                }
+                else
+                {
+                    // Collision with prey = prey disappears
+                    enemy.IsAlive = false;
+                }
+            }
         }
 
         base.Update(gameTime);
@@ -113,12 +162,36 @@ public class Game1 : Microsoft.Xna.Framework.Game
         var playerOrigin = new XnaVector2(_player.Radius, _player.Radius);
         _spriteBatch.Draw(_playerTexture, playerPos, null, Color.White, 0f, playerOrigin, 1f, SpriteEffects.None, 0f);
 
-        // Draw enemy if alive
-        if (_enemy.IsAlive)
+        // Draw all enemies if alive (Hunters=red, Prey=green)
+        foreach (var enemy in _enemies)
         {
-            var enemyPos = new XnaVector2(_enemy.Position.X, _enemy.Position.Y);
-            var enemyOrigin = new XnaVector2(_enemy.Radius, _enemy.Radius);
-            _spriteBatch.Draw(_enemyTexture, enemyPos, null, Color.White, 0f, enemyOrigin, 1f, SpriteEffects.None, 0f);
+            if (enemy.IsAlive)
+            {
+                var enemyPos = new XnaVector2(enemy.Position.X, enemy.Position.Y);
+                var enemyOrigin = new XnaVector2(enemy.Radius, enemy.Radius);
+                var texture = enemy.Type == EnemyType.Hunter ? _hunterTexture : _preyTexture;
+                _spriteBatch.Draw(texture, enemyPos, null, Color.White, 0f, enemyOrigin, 1f, SpriteEffects.None, 0f);
+            }
+        }
+
+        // Draw game over overlay if game is over
+        if (_gameState == GameState.GameOver)
+        {
+            // Draw semi-transparent red overlay covering entire screen
+            var screenRect = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            _spriteBatch.Draw(_gameOverTexture, screenRect, Color.White);
+
+            // Draw "GAME OVER" using large circles (simple visual indicator)
+            int centerX = GraphicsDevice.Viewport.Width / 2;
+            int centerY = GraphicsDevice.Viewport.Height / 2;
+
+            // Draw large text indicator circles spelling "G O"
+            for (int i = -3; i <= 3; i++)
+            {
+                var pos = new XnaVector2(centerX + i * 60, centerY);
+                _spriteBatch.Draw(_playerTexture, pos, null, Color.White, 0f,
+                    new XnaVector2(_player.Radius, _player.Radius), 2f, SpriteEffects.None, 0f);
+            }
         }
 
         _spriteBatch.End();
