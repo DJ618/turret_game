@@ -1,7 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TurretGame.Core.Entities;
+using TurretGame.Core.Utilities;
 using SysVector2 = System.Numerics.Vector2;
 using XnaVector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -12,13 +14,17 @@ public class Game1 : Microsoft.Xna.Framework.Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
     private Player _player;
-    private Texture2D _circleTexture;
+    private Enemy _enemy;
+    private Texture2D _playerTexture;
+    private Texture2D _enemyTexture;
+    private Random _random;
 
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
+        _random = new Random();
     }
 
     protected override void Initialize()
@@ -44,8 +50,13 @@ public class Game1 : Microsoft.Xna.Framework.Game
         );
         _player = new Player(screenCenter);
 
-        // Create circle texture for player rendering
-        _circleTexture = CreateCircleTexture(GraphicsDevice, (int)_player.Radius, Color.Cyan);
+        // Create textures
+        _playerTexture = CreateCircleTexture(GraphicsDevice, (int)_player.Radius, Color.Cyan);
+
+        // Spawn enemy at random edge
+        var enemyPosition = GetRandomEdgePosition();
+        _enemy = new Enemy(enemyPosition);
+        _enemyTexture = CreateCircleTexture(GraphicsDevice, (int)_enemy.Radius, Color.Red);
     }
 
     protected override void Update(GameTime gameTime)
@@ -77,6 +88,17 @@ public class Game1 : Microsoft.Xna.Framework.Game
             GraphicsDevice.Viewport.Height
         );
 
+        // Update enemy to chase player
+        _enemy.Update(_player.Position, deltaTime);
+
+        // Check collision between player and enemy
+        if (_enemy.IsAlive && CollisionDetection.CircleToCircle(
+            _player.Position, _player.Radius,
+            _enemy.Position, _enemy.Radius))
+        {
+            _enemy.IsAlive = false;
+        }
+
         base.Update(gameTime);
     }
 
@@ -86,10 +108,18 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
         _spriteBatch.Begin();
 
-        // Draw player as a colored circle
+        // Draw player
         var playerPos = new XnaVector2(_player.Position.X, _player.Position.Y);
-        var origin = new XnaVector2(_player.Radius, _player.Radius);
-        _spriteBatch.Draw(_circleTexture, playerPos, null, Color.White, 0f, origin, 1f, SpriteEffects.None, 0f);
+        var playerOrigin = new XnaVector2(_player.Radius, _player.Radius);
+        _spriteBatch.Draw(_playerTexture, playerPos, null, Color.White, 0f, playerOrigin, 1f, SpriteEffects.None, 0f);
+
+        // Draw enemy if alive
+        if (_enemy.IsAlive)
+        {
+            var enemyPos = new XnaVector2(_enemy.Position.X, _enemy.Position.Y);
+            var enemyOrigin = new XnaVector2(_enemy.Radius, _enemy.Radius);
+            _spriteBatch.Draw(_enemyTexture, enemyPos, null, Color.White, 0f, enemyOrigin, 1f, SpriteEffects.None, 0f);
+        }
 
         _spriteBatch.End();
 
@@ -126,5 +156,21 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
         texture.SetData(colorData);
         return texture;
+    }
+
+    private SysVector2 GetRandomEdgePosition()
+    {
+        int screenWidth = GraphicsDevice.Viewport.Width;
+        int screenHeight = GraphicsDevice.Viewport.Height;
+        int edge = _random.Next(4); // 0=top, 1=right, 2=bottom, 3=left
+
+        return edge switch
+        {
+            0 => new SysVector2(_random.Next(0, screenWidth), 0), // Top edge
+            1 => new SysVector2(screenWidth, _random.Next(0, screenHeight)), // Right edge
+            2 => new SysVector2(_random.Next(0, screenWidth), screenHeight), // Bottom edge
+            3 => new SysVector2(0, _random.Next(0, screenHeight)), // Left edge
+            _ => new SysVector2(screenWidth / 2f, 0) // Default to top center
+        };
     }
 }

@@ -1,17 +1,37 @@
 # TurretGame - MVP Development Roadmap
 
 ## MVP Definition
-Playable game demonstrating the core addictive loop: survive waves, collect resources, place turrets, get stronger, eventually die, want to replay immediately.
+Playable game demonstrating the core addictive loop: hunt fleeing enemies, optimize kill time, collect resources, place turrets, get faster, compete for best times.
+
+**CORE DYNAMIC: Player is PREDATOR, enemies are PREY**
 
 **MVP Success Criteria:**
 - 3-5 minute runs feel complete
-- Player wants to try "one more run"
-- Core loop is functional and fun
+- Player wants to optimize "one more run" for better time
+- Core hunting loop is functional and satisfying
+- Time-attack scoring creates replay motivation
 
 ## Technical Stack
 - **.NET 8.0** (LTS)
 - **MonoGame 3.8.1.303** (mgdesktopgl template)
 - **Development Environment**: Visual Studio
+
+---
+
+## MAJOR DESIGN PIVOT (Sprint 1.2)
+
+**OLD CONCEPT**: Survive waves of enemies chasing you
+**NEW CONCEPT**: Hunt down enemies that flee from you
+
+**What Changed:**
+- Enemies now FLEE from player and turrets (evasion AI)
+- Player is the PREDATOR, enemies are PREY
+- Primary challenge is SPEED not survival
+- Victory = eliminate all enemies FAST (time-attack)
+- Scoring based on completion time
+- Gameplay loop: Hunt → Optimize → Compete for best times
+
+This inverts the traditional predator/prey relationship and shifts focus from defensive survival to aggressive hunting optimization.
 
 ---
 
@@ -26,28 +46,29 @@ Playable game demonstrating the core addictive loop: survive waves, collect reso
 
 ### Sprint 1.2: Enemy Basics
 - Enemy entity (position, velocity, health)
-- Simple chase AI (move toward player)
-- Spawning system (manual spawn for testing)
-- Basic collision detection (circle or AABB)
-- **Deliverable**: Enemy chases player, collision detected
+- **FLEE AI (move AWAY from player) - DESIGN PIVOT**
+- Spawning system (spawn at screen edges)
+- Basic collision detection (circle-based)
+- **Deliverable**: Enemy flees from player, collision detected
 
 ### Sprint 1.3: Combat & Resources
 - Enemy death on collision with player (placeholder for turret damage)
 - Resource drop entity (pickups)
 - Player collection on overlap
 - Resource counter UI
-- **Deliverable**: Kill enemy → collect resource → counter updates
+- Wave timer display
+- **Deliverable**: Hunt enemy → collect resource → counter updates, time tracked
 
 ---
 
 ## Phase 2: Core Loop (Weeks 3-4)
 
 ### Sprint 2.1: Wave System
-- Wave state machine (preparation → wave → build)
-- Wave timer/counter
+- Wave state machine (hunt → build → next wave)
+- Wave timer (tracks completion time for scoring)
 - Enemy spawning (X enemies per wave, increases each wave)
-- Wave completion detection
-- **Deliverable**: Waves spawn, escalate, pause for build phase
+- Wave completion detection (all enemies eliminated)
+- **Deliverable**: Hunt all enemies → record time → build phase → next wave
 
 ### Sprint 2.2: Turret Placement
 - Turret entity (position, range, damage, fire rate)
@@ -57,11 +78,11 @@ Playable game demonstrating the core addictive loop: survive waves, collect reso
 - **Deliverable**: Place turrets, they appear on field
 
 ### Sprint 2.3: Turret Combat
-- Target acquisition (find nearest enemy in range)
+- Target acquisition (find nearest fleeing enemy in range)
 - Projectile entity (position, velocity, damage)
 - Projectile-enemy collision
 - Enemy health/death from turret damage
-- **Deliverable**: Turrets shoot and kill enemies
+- **Deliverable**: Turrets help hunt down and eliminate fleeing enemies
 
 ---
 
@@ -82,27 +103,27 @@ Playable game demonstrating the core addictive loop: survive waves, collect reso
 - **Deliverable**: Choose upgrades, see immediate effects
 
 ### Sprint 3.3: Difficulty Scaling
-- Wave scaling formula (enemies, health, speed)
+- Wave scaling formula (more enemies, faster flee speed, better evasion)
 - Resource drop scaling
-- Balance tuning (ensure death around wave 10-15 for MVP)
-- **Deliverable**: Game gets harder, eventually kills player
+- Balance tuning (ensure challenging hunt times increase progressively)
+- **Deliverable**: Enemies become harder to hunt, more evasive each wave
 
 ---
 
 ## Phase 4: Roguelike Structure (Week 7)
 
-### Sprint 4.1: Permadeath & Run Loop
-- Game over state
-- Run summary screen (wave reached, enemies killed, resources collected)
+### Sprint 4.1: Run Completion & Scoring
+- Run summary screen (waves completed, total time, enemies hunted, time rankings)
+- Time-based scoring system (faster = better rewards)
 - Restart flow (clear entities, reset state)
-- **Deliverable**: Death → summary → restart seamlessly
+- **Deliverable**: Complete run → see times/scores → restart for better performance
 
 ### Sprint 4.2: Meta-Progression
-- Meta-currency drop on death (based on performance)
-- Persistent unlock system (new turret types, starting bonuses)
+- Meta-currency rewards (based on time performance and waves completed)
+- Persistent unlock system (new turret types, hunting speed bonuses)
 - Simple unlock UI (spend meta-currency between runs)
-- Save/load system for meta-progression
-- **Deliverable**: Each run unlocks something for next run
+- Save/load system for meta-progression and best times
+- **Deliverable**: Each run earns unlocks and records best times
 
 ---
 
@@ -125,12 +146,13 @@ Playable game demonstrating the core addictive loop: survive waves, collect reso
 ---
 
 ## Post-MVP Expansion Ideas (Future)
-- More turret types (AOE, slow, chain lightning)
-- More enemy types (fast, tanky, ranged)
-- Boss waves every 5 waves
-- Map obstacles/terrain
-- Player abilities (dash, temporary shield)
-- Leaderboards/stats tracking
+- More turret types (AOE, slow/trap, guided missiles)
+- More enemy evasion types (fast runners, erratic dodgers, teleporters)
+- Boss hunts every 5 waves (ultra-evasive prey)
+- Map obstacles/terrain (creates escape routes and chokepoints)
+- Player abilities (dash for closing distance, temporary speed boost)
+- Global leaderboards for best times per wave
+- Replay system to study optimal hunting patterns
 
 ---
 
