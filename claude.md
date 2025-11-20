@@ -47,8 +47,8 @@ A 2D top-down roguelike wave survival game with economic strategy and automated 
 ## Technical Architecture
 
 ### Technology Stack
-- **.NET 9**
-- **MonoGame** (mgdesktopgl template)
+- **.NET 8.0** (LTS)
+- **MonoGame 3.8.1.303** (mgdesktopgl template)
 - **Development Environment**: Visual Studio
 
 ### Solution Structure (Clean Architecture)

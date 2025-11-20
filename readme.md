@@ -8,6 +8,11 @@ Playable game demonstrating the core addictive loop: survive waves, collect reso
 - Player wants to try "one more run"
 - Core loop is functional and fun
 
+## Technical Stack
+- **.NET 8.0** (LTS)
+- **MonoGame 3.8.1.303** (mgdesktopgl template)
+- **Development Environment**: Visual Studio
+
 ---
 
 ## Phase 1: Foundation (Weeks 1-2)

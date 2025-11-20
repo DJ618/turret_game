@@ -1,0 +1,16 @@
+D:\dev\code\turret_game\TurretGame.Infrastructure\bin\Debug\net8.0\TurretGame.Infrastructure.deps.json
+D:\dev\code\turret_game\TurretGame.Infrastructure\bin\Debug\net8.0\TurretGame.Infrastructure.dll
+D:\dev\code\turret_game\TurretGame.Infrastructure\bin\Debug\net8.0\TurretGame.Infrastructure.pdb
+D:\dev\code\turret_game\TurretGame.Infrastructure\bin\Debug\net8.0\TurretGame.Core.dll
+D:\dev\code\turret_game\TurretGame.Infrastructure\bin\Debug\net8.0\TurretGame.Core.pdb
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.csproj.AssemblyReference.cache
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.AssemblyInfoInputs.cache
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.AssemblyInfo.cs
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.csproj.CoreCompileInputs.cache
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.sourcelink.json
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGa.3F96A620.Up2Date
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.dll
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\refint\TurretGame.Infrastructure.dll
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\TurretGame.Infrastructure.pdb
+D:\dev\code\turret_game\TurretGame.Infrastructure\obj\Debug\net8.0\ref\TurretGame.Infrastructure.dll

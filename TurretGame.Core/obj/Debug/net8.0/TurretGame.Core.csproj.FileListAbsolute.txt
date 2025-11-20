@@ -1,0 +1,12 @@
+D:\dev\code\turret_game\TurretGame.Core\bin\Debug\net8.0\TurretGame.Core.deps.json
+D:\dev\code\turret_game\TurretGame.Core\bin\Debug\net8.0\TurretGame.Core.dll
+D:\dev\code\turret_game\TurretGame.Core\bin\Debug\net8.0\TurretGame.Core.pdb
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.GeneratedMSBuildEditorConfig.editorconfig
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.AssemblyInfoInputs.cache
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.AssemblyInfo.cs
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.csproj.CoreCompileInputs.cache
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.sourcelink.json
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.dll
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\refint\TurretGame.Core.dll
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\TurretGame.Core.pdb
+D:\dev\code\turret_game\TurretGame.Core\obj\Debug\net8.0\ref\TurretGame.Core.dll
