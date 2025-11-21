@@ -10,7 +10,8 @@
       "Bash(git rm:*)",
       "Bash(dir:*)",
       "Bash(dotnet mgcb-editor-windows:*)",
-      "SlashCommand(/commit-push)"
+      "SlashCommand(/commit-push)",
+      "Bash(dotnet add:*)"
     ],
     "deny": [],
     "ask": []

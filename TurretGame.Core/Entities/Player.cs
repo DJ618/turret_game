@@ -5,7 +5,7 @@ namespace TurretGame.Core.Entities;
 public class Player
 {
     public Vector2 Position { get; private set; }
-    public float Speed { get; set; } = 200f;
+    public float Speed { get; set; } = 400f;
     public float Radius { get; set; } = 20f;
     public int ResourceCount { get; private set; } = 0;
 
