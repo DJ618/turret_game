@@ -7,10 +7,16 @@ public class Player
     public Vector2 Position { get; private set; }
     public float Speed { get; set; } = 200f;
     public float Radius { get; set; } = 20f;
+    public int ResourceCount { get; private set; } = 0;
 
     public Player(Vector2 startPosition)
     {
         Position = startPosition;
+    }
+
+    public void CollectResource(int amount)
+    {
+        ResourceCount += amount;
     }
 
     public void Update(Vector2 movementDirection, float deltaTime, float minX, float maxX, float minY, float maxY)

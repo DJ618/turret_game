@@ -22,12 +22,23 @@ public class Game1 : Microsoft.Xna.Framework.Game
     private SpriteBatch _spriteBatch;
     private Player _player;
     private List<Enemy> _enemies;
+    private List<ResourcePickup> _resourcePickups;
     private Texture2D _playerTexture;
     private Texture2D _hunterTexture;
     private Texture2D _preyTexture;
+    private Texture2D _coinSpriteSheet;
     private Random _random;
     private GameState _gameState;
     private Texture2D _gameOverTexture;
+    private SpriteFont _gameFont;
+
+    // Coin animation
+    private int _coinFrameCount = 10;
+    private int _coinCurrentFrame = 0;
+    private float _coinFrameTime = 0f;
+    private float _coinFrameDuration = 0.08f; // 80ms per frame
+    private int _coinFrameWidth;
+    private int _coinFrameHeight;
 
     public Game1()
     {
@@ -36,6 +47,7 @@ public class Game1 : Microsoft.Xna.Framework.Game
         IsMouseVisible = true;
         _random = new Random();
         _enemies = new List<Enemy>();
+        _resourcePickups = new List<ResourcePickup>();
         _gameState = GameState.Playing;
     }
 
@@ -66,6 +78,14 @@ public class Game1 : Microsoft.Xna.Framework.Game
         _playerTexture = CreateCircleTexture(GraphicsDevice, (int)_player.Radius, Color.Cyan);
         _hunterTexture = CreateCircleTexture(GraphicsDevice, 15, Color.Red);
         _preyTexture = CreateCircleTexture(GraphicsDevice, 15, Color.Green);
+
+        // Load coin sprite sheet
+        _coinSpriteSheet = Content.Load<Texture2D>("CoinSprite");
+        _coinFrameWidth = _coinSpriteSheet.Width / _coinFrameCount;
+        _coinFrameHeight = _coinSpriteSheet.Height;
+
+        // Load font
+        _gameFont = Content.Load<SpriteFont>("GameFont");
 
         // Create game over overlay texture (semi-transparent red)
         _gameOverTexture = new Texture2D(GraphicsDevice, 1, 1);
@@ -142,10 +162,38 @@ public class Game1 : Microsoft.Xna.Framework.Game
                 }
                 else
                 {
-                    // Collision with prey = prey disappears
+                    // Collision with prey = prey disappears and drops resource
                     enemy.IsAlive = false;
+
+                    // Spawn resource pickup at enemy's position
+                    var pickup = new ResourcePickup(enemy.Position, 1);
+                    _resourcePickups.Add(pickup);
                 }
             }
+        }
+
+        // Check collision between player and resource pickups
+        foreach (var pickup in _resourcePickups)
+        {
+            if (!pickup.IsCollected && CollisionDetection.CircleToCircle(
+                _player.Position, _player.Radius,
+                pickup.Position, pickup.Radius))
+            {
+                // Collect the resource
+                pickup.IsCollected = true;
+                _player.CollectResource(pickup.Value);
+            }
+        }
+
+        // Remove collected pickups
+        _resourcePickups.RemoveAll(p => p.IsCollected);
+
+        // Update coin animation
+        _coinFrameTime += deltaTime;
+        if (_coinFrameTime >= _coinFrameDuration)
+        {
+            _coinFrameTime -= _coinFrameDuration;
+            _coinCurrentFrame = (_coinCurrentFrame + 1) % _coinFrameCount;
         }
 
         base.Update(gameTime);
@@ -174,6 +222,28 @@ public class Game1 : Microsoft.Xna.Framework.Game
             }
         }
 
+        // Draw all resource pickups with animated coin sprite
+        foreach (var pickup in _resourcePickups)
+        {
+            if (!pickup.IsCollected)
+            {
+                var pickupPos = new XnaVector2(pickup.Position.X, pickup.Position.Y);
+
+                // Calculate source rectangle for current animation frame
+                var sourceRect = new Rectangle(
+                    _coinCurrentFrame * _coinFrameWidth,
+                    0,
+                    _coinFrameWidth,
+                    _coinFrameHeight
+                );
+
+                // Center the sprite on the pickup position
+                var origin = new XnaVector2(_coinFrameWidth / 2f, _coinFrameHeight / 2f);
+
+                _spriteBatch.Draw(_coinSpriteSheet, pickupPos, sourceRect, Color.White, 0f, origin, 1f, SpriteEffects.None, 0f);
+            }
+        }
+
         // Draw game over overlay if game is over
         if (_gameState == GameState.GameOver)
         {
@@ -181,17 +251,14 @@ public class Game1 : Microsoft.Xna.Framework.Game
             var screenRect = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
             _spriteBatch.Draw(_gameOverTexture, screenRect, Color.White);
 
-            // Draw "GAME OVER" using large circles (simple visual indicator)
-            int centerX = GraphicsDevice.Viewport.Width / 2;
-            int centerY = GraphicsDevice.Viewport.Height / 2;
-
-            // Draw large text indicator circles spelling "G O"
-            for (int i = -3; i <= 3; i++)
-            {
-                var pos = new XnaVector2(centerX + i * 60, centerY);
-                _spriteBatch.Draw(_playerTexture, pos, null, Color.White, 0f,
-                    new XnaVector2(_player.Radius, _player.Radius), 2f, SpriteEffects.None, 0f);
-            }
+            // Draw "GAME OVER" text centered on screen
+            string gameOverText = "GAME OVER";
+            var textSize = _gameFont.MeasureString(gameOverText);
+            var textPosition = new XnaVector2(
+                GraphicsDevice.Viewport.Width / 2f - textSize.X / 2f,
+                GraphicsDevice.Viewport.Height / 2f - textSize.Y / 2f
+            );
+            _spriteBatch.DrawString(_gameFont, gameOverText, textPosition, Color.White);
         }
 
         _spriteBatch.End();
