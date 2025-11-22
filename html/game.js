@@ -316,16 +316,19 @@ class Game {
             }
         }
 
-        // Check enemy-enemy collisions (prevent overlapping beyond half their width)
+        // Check hunter-hunter collisions (prevent overlapping beyond 1/4 their width)
         for (let i = 0; i < this.enemies.length; i++) {
+            const enemy1 = this.enemies[i];
+            if (!enemy1.isAlive || enemy1.type !== EnemyType.HUNTER) continue;
+
             for (let j = i + 1; j < this.enemies.length; j++) {
-                const enemy1 = this.enemies[i];
                 const enemy2 = this.enemies[j];
+                if (!enemy2.isAlive || enemy2.type !== EnemyType.HUNTER) continue;
 
                 const distance = this.distance(enemy1.x, enemy1.y, enemy2.x, enemy2.y);
-                const minDistance = (enemy1.radius + enemy2.radius) * 0.5; // Allow overlap of half their combined width
+                const minDistance = (enemy1.radius + enemy2.radius) * 0.75; // Allow 1/4 overlap
 
-                if (distance < minDistance && distance > 0.001) {
+                if (distance < minDistance && distance > 0) {
                     // Push enemies apart
                     const dx = enemy2.x - enemy1.x;
                     const dy = enemy2.y - enemy1.y;

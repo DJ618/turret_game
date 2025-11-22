@@ -4,6 +4,13 @@ const EnemyType = {
     PREY: 'prey'       // Flees from the player
 };
 
+// Flee Strategies
+const FleeStrategy = {
+    DIRECT_AWAY: 'direct_away',        // Flee directly away from player
+    RANDOM_ANGLE: 'random_angle',      // Flee away with random angular offset
+    PREFERRED_CORNER: 'preferred_corner' // Flee toward a specific corner
+};
+
 // Player class
 class Player {
     constructor(x, y) {
@@ -56,6 +63,31 @@ class Enemy {
         this.radius = 15;
         this.health = 100;
         this.isAlive = true;
+
+        // Constants for prey behavior
+        this.FLEE_DISTANCE_THRESHOLD = 250; // Start fleeing when player is within 250 pixels
+        this.WANDER_SPEED_MULTIPLIER = 0.3; // Move slower when wandering
+
+        // Assign random flee strategy for prey
+        if (type === EnemyType.PREY) {
+            const strategyChoice = Math.floor(Math.random() * 3);
+            this.fleeStrategy = Object.values(FleeStrategy)[strategyChoice];
+            this.fleeAngleOffset = Math.random() * Math.PI / 2 - Math.PI / 4; // -45 to +45 degrees
+            this.preferredCornerIndex = Math.floor(Math.random() * 4);
+
+            // Initialize wander behavior with random direction
+            this.wanderDirection = this.getRandomDirection();
+            this.wanderChangeInterval = 1 + Math.random() * 2; // Change direction every 1-3 seconds
+            this.wanderTimer = 0;
+        }
+    }
+
+    getRandomDirection() {
+        const angle = Math.random() * 2 * Math.PI;
+        return {
+            x: Math.cos(angle),
+            y: Math.sin(angle)
+        };
     }
 
     update(playerX, playerY, deltaTime, minX, maxX, minY, maxY) {
@@ -68,10 +100,25 @@ class Enemy {
             dirX = playerX - this.x;
             dirY = playerY - this.y;
         } else {
-            // Prey flee - move toward the farthest corner from player to maximize distance
-            const corner = this.getFarthestCorner(playerX, playerY, minX, maxX, minY, maxY);
-            dirX = corner.x - this.x;
-            dirY = corner.y - this.y;
+            // Prey behavior depends on distance to player
+            const distanceToPlayer = this.distance(this.x, this.y, playerX, playerY);
+
+            if (distanceToPlayer < this.FLEE_DISTANCE_THRESHOLD) {
+                // Player is close - flee actively
+                const fleeDir = this.getFleeDirection(playerX, playerY, minX, maxX, minY, maxY);
+                dirX = fleeDir.x;
+                dirY = fleeDir.y;
+            } else {
+                // Player is far - wander slowly, biased away from edges
+                this.wanderTimer += deltaTime;
+                if (this.wanderTimer >= this.wanderChangeInterval) {
+                    this.wanderTimer = 0;
+                    this.wanderDirection = this.getWanderDirection(minX, maxX, minY, maxY);
+                    this.wanderChangeInterval = 1 + Math.random() * 2;
+                }
+                dirX = this.wanderDirection.x;
+                dirY = this.wanderDirection.y;
+            }
         }
 
         // Normalize direction
@@ -81,35 +128,125 @@ class Enemy {
             dirY /= length;
         }
 
+        // Adjust speed based on behavior (wander slower)
+        let effectiveSpeed = this.speed;
+        if (this.type === EnemyType.PREY) {
+            const distanceToPlayer = this.distance(this.x, this.y, playerX, playerY);
+            if (distanceToPlayer >= this.FLEE_DISTANCE_THRESHOLD) {
+                effectiveSpeed *= this.WANDER_SPEED_MULTIPLIER;
+            }
+        }
+
         // Apply movement
-        this.x += dirX * this.speed * deltaTime;
-        this.y += dirY * this.speed * deltaTime;
+        this.x += dirX * effectiveSpeed * deltaTime;
+        this.y += dirY * effectiveSpeed * deltaTime;
 
         // Clamp to bounds (accounting for radius)
         this.x = Math.max(minX + this.radius, Math.min(maxX - this.radius, this.x));
         this.y = Math.max(minY + this.radius, Math.min(maxY - this.radius, this.y));
     }
 
-    getFarthestCorner(playerX, playerY, minX, maxX, minY, maxY) {
-        const corners = [
-            { x: minX + this.radius, y: minY + this.radius },     // Top-left
-            { x: maxX - this.radius, y: minY + this.radius },     // Top-right
-            { x: minX + this.radius, y: maxY - this.radius },     // Bottom-left
-            { x: maxX - this.radius, y: maxY - this.radius }      // Bottom-right
-        ];
+    getFleeDirection(playerX, playerY, minX, maxX, minY, maxY) {
+        switch (this.fleeStrategy) {
+            case FleeStrategy.DIRECT_AWAY:
+                // Flee directly away from player
+                return {
+                    x: this.x - playerX,
+                    y: this.y - playerY
+                };
 
-        let farthestCorner = corners[0];
-        let maxDistance = this.distance(playerX, playerY, corners[0].x, corners[0].y);
+            case FleeStrategy.RANDOM_ANGLE: {
+                // Flee away from player with angular offset
+                let awayX = this.x - playerX;
+                let awayY = this.y - playerY;
+                const awayLength = Math.sqrt(awayX * awayX + awayY * awayY);
 
-        for (let i = 1; i < corners.length; i++) {
-            const dist = this.distance(playerX, playerY, corners[i].x, corners[i].y);
-            if (dist > maxDistance) {
-                maxDistance = dist;
-                farthestCorner = corners[i];
+                if (awayLength > 0) {
+                    awayX /= awayLength;
+                    awayY /= awayLength;
+
+                    // Rotate by the offset angle
+                    const cos = Math.cos(this.fleeAngleOffset);
+                    const sin = Math.sin(this.fleeAngleOffset);
+                    return {
+                        x: awayX * cos - awayY * sin,
+                        y: awayX * sin + awayY * cos
+                    };
+                }
+                return { x: 0, y: 0 };
+            }
+
+            case FleeStrategy.PREFERRED_CORNER: {
+                // Flee toward specific corner
+                const corner = this.getCorner(this.preferredCornerIndex, minX, maxX, minY, maxY);
+                return {
+                    x: corner.x - this.x,
+                    y: corner.y - this.y
+                };
+            }
+
+            default:
+                return {
+                    x: this.x - playerX,
+                    y: this.y - playerY
+                };
+        }
+    }
+
+    getCorner(cornerIndex, minX, maxX, minY, maxY) {
+        switch (cornerIndex) {
+            case 0: return { x: minX + this.radius, y: minY + this.radius };     // Top-left
+            case 1: return { x: maxX - this.radius, y: minY + this.radius };     // Top-right
+            case 2: return { x: minX + this.radius, y: maxY - this.radius };     // Bottom-left
+            case 3: return { x: maxX - this.radius, y: maxY - this.radius };     // Bottom-right
+            default: return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+        }
+    }
+
+    getWanderDirection(minX, maxX, minY, maxY) {
+        // Calculate center of bounds
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        // Calculate distance to each edge
+        const edgeThreshold = 200; // Start biasing toward center when within 200 pixels of edge
+        const distToLeft = this.x - minX;
+        const distToRight = maxX - this.x;
+        const distToTop = this.y - minY;
+        const distToBottom = maxY - this.y;
+
+        // Determine if we're near any edge
+        const nearEdge = distToLeft < edgeThreshold || distToRight < edgeThreshold ||
+                        distToTop < edgeThreshold || distToBottom < edgeThreshold;
+
+        if (nearEdge) {
+            // Bias toward center
+            let towardCenterX = centerX - this.x;
+            let towardCenterY = centerY - this.y;
+            const centerLength = Math.sqrt(towardCenterX * towardCenterX + towardCenterY * towardCenterY);
+
+            if (centerLength > 0) {
+                towardCenterX /= centerLength;
+                towardCenterY /= centerLength;
+            }
+
+            const randomDir = this.getRandomDirection();
+
+            // Blend 70% toward center, 30% random for natural movement
+            const blendedX = towardCenterX * 0.7 + randomDir.x * 0.3;
+            const blendedY = towardCenterY * 0.7 + randomDir.y * 0.3;
+            const blendedLength = Math.sqrt(blendedX * blendedX + blendedY * blendedY);
+
+            if (blendedLength > 0) {
+                return {
+                    x: blendedX / blendedLength,
+                    y: blendedY / blendedLength
+                };
             }
         }
 
-        return farthestCorner;
+        // Not near edge, wander randomly
+        return this.getRandomDirection();
     }
 
     distance(x1, y1, x2, y2) {
