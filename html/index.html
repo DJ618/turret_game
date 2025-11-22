@@ -22,33 +22,73 @@
         }
         #info {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
             left: 10px;
             color: white;
             background-color: rgba(0, 0, 0, 0.7);
             padding: 10px;
             border-radius: 5px;
             font-size: 14px;
+            max-width: 400px;
         }
         #info h3 {
             margin: 0 0 10px 0;
+            display: inline-block;
         }
         #info ul {
             margin: 5px 0;
             padding-left: 20px;
+        }
+        #closeInfo {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            line-height: 20px;
+            text-align: center;
+        }
+        #closeInfo:hover {
+            color: #ff6666;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <div id="info">
+        <button id="closeInfo" title="Close">×</button>
         <h3>Turret Game</h3>
         <ul>
-            <li><strong>WASD</strong> - Move</li>
-            <li><strong>Green Enemy</strong> - Flees (catch it!)</li>
-            <li><strong>Red Enemy</strong> - Chases (avoid it!)</li>
+            <li><strong>WASD</strong> - Move player (cyan circle)</li>
+            <li><strong>Green Enemy</strong> - Prey (flees from you)</li>
+            <li><strong>Red Enemy</strong> - Hunter (chases you)</li>
+            <li><strong>Gold Coins</strong> - Resources (collect them)</li>
+            <li><strong>Black Squares</strong> - Turrets (auto-shoot enemies)</li>
+            <li><strong>Mouse Click</strong> - Place turret (1 per wave from wave 2+)</li>
         </ul>
+        <p><strong>Goal:</strong> Survive waves, collect resources, place turrets strategically!</p>
     </div>
+
+    <script>
+        // Handle info window close button
+        document.addEventListener('DOMContentLoaded', () => {
+            const infoDiv = document.getElementById('info');
+            const closeButton = document.getElementById('closeInfo');
+
+            closeButton.addEventListener('click', () => {
+                infoDiv.classList.add('hidden');
+            });
+        });
+    </script>
 
     <script src="entities.js"></script>
     <script src="game.js"></script>

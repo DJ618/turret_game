@@ -8,15 +8,21 @@ public class EntityManager
 {
     private readonly List<Enemy> _enemies;
     private readonly List<ResourcePickup> _pickups;
+    private readonly List<Turret> _turrets;
+    private readonly List<Projectile> _projectiles;
 
     public EntityManager()
     {
         _enemies = new List<Enemy>();
         _pickups = new List<ResourcePickup>();
+        _turrets = new List<Turret>();
+        _projectiles = new List<Projectile>();
     }
 
     public IReadOnlyList<Enemy> Enemies => _enemies;
     public IReadOnlyList<ResourcePickup> Pickups => _pickups;
+    public IReadOnlyList<Turret> Turrets => _turrets;
+    public IReadOnlyList<Projectile> Projectiles => _projectiles;
 
     public void AddEnemy(Enemy enemy)
     {
@@ -28,9 +34,24 @@ public class EntityManager
         _pickups.Add(pickup);
     }
 
+    public void AddTurret(Turret turret)
+    {
+        _turrets.Add(turret);
+    }
+
+    public void AddProjectile(Projectile projectile)
+    {
+        _projectiles.Add(projectile);
+    }
+
     public void RemoveCollectedPickups()
     {
         _pickups.RemoveAll(p => p.IsCollected);
+    }
+
+    public void RemoveInactiveProjectiles()
+    {
+        _projectiles.RemoveAll(p => !p.IsActive);
     }
 
     public void UpdateEnemies(System.Numerics.Vector2 playerPosition, float deltaTime, Bounds bounds)
@@ -83,5 +104,7 @@ public class EntityManager
     {
         _enemies.Clear();
         _pickups.Clear();
+        _turrets.Clear();
+        _projectiles.Clear();
     }
 }

@@ -5,6 +5,7 @@ using TurretGame.Application.Systems;
 using TurretGame.Core.Entities;
 using TurretGame.Core.Interfaces;
 using TurretGame.Core.State;
+using TurretGame.Core.Utilities;
 
 namespace TurretGame.Application;
 
@@ -29,7 +30,7 @@ public class GameCollisionHandler : ICollisionHandler
         _random = new Random();
     }
 
-    public void OnPlayerEnemyCollision(Player player, Enemy enemy)
+    public void OnPlayerEnemyCollision(Player player, Enemy enemy, Bounds bounds)
     {
         if (enemy.Type == EnemyType.Hunter)
         {
@@ -45,6 +46,14 @@ public class GameCollisionHandler : ICollisionHandler
             // Spawn resource pickup with random offset from enemy's position
             var offset = GetRandomOffset(80f, 150f); // Random distance between 80-150 pixels
             var pickupPosition = enemy.Position + offset;
+
+            // Clamp pickup position within bounds (accounting for pickup radius)
+            const float pickupRadius = 8f; // Match ResourcePickup.Radius default
+            pickupPosition = new Vector2(
+                Math.Clamp(pickupPosition.X, bounds.MinX + pickupRadius, bounds.MaxX - pickupRadius),
+                Math.Clamp(pickupPosition.Y, bounds.MinY + pickupRadius, bounds.MaxY - pickupRadius)
+            );
+
             var pickup = new ResourcePickup(pickupPosition, 1);
             _entityManager.AddPickup(pickup);
         }

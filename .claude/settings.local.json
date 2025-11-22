@@ -11,7 +11,12 @@
       "Bash(dir:*)",
       "Bash(dotnet mgcb-editor-windows:*)",
       "SlashCommand(/commit-push)",
-      "Bash(dotnet add:*)"
+      "Bash(dotnet add:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet mgcb:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet msbuild:*)",
+      "Bash(start index.html)"
     ],
     "deny": [],
     "ask": []

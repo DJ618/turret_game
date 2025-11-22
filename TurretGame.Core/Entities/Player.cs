@@ -14,6 +14,11 @@ public class Player
         Position = startPosition;
     }
 
+    public void SetPosition(Vector2 newPosition)
+    {
+        Position = newPosition;
+    }
+
     public void CollectResource(int amount)
     {
         ResourceCount += amount;

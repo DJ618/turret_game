@@ -9,7 +9,7 @@ class Player {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.speed = 200; // pixels per second
+        this.speed = 400; // pixels per second (matches .NET default)
         this.radius = 20;
     }
 
@@ -127,6 +127,111 @@ class Enemy {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+// Turret class
+class Turret {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = 30; // Half-width of square (1.5x player radius)
+        this.shootCooldown = 2.0; // Seconds between shots
+        this.timeSinceLastShot = 0;
+    }
+
+    update(deltaTime) {
+        this.timeSinceLastShot += deltaTime;
+    }
+
+    canShoot() {
+        return this.timeSinceLastShot >= this.shootCooldown;
+    }
+
+    resetShootCooldown() {
+        this.timeSinceLastShot = 0;
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = '#000000'; // Black square
+        ctx.fillRect(
+            this.x - this.size,
+            this.y - this.size,
+            this.size * 2,
+            this.size * 2
+        );
+    }
+}
+
+// Projectile class
+class Projectile {
+    constructor(startX, startY, targetX, targetY) {
+        this.x = startX;
+        this.y = startY;
+        this.radius = 5;
+        this.speed = 500; // pixels per second
+        this.isActive = true;
+
+        // Calculate velocity toward target
+        let dirX = targetX - startX;
+        let dirY = targetY - startY;
+        const length = Math.sqrt(dirX * dirX + dirY * dirY);
+
+        if (length > 0) {
+            dirX /= length;
+            dirY /= length;
+        }
+
+        this.velocityX = dirX * this.speed;
+        this.velocityY = dirY * this.speed;
+    }
+
+    update(deltaTime, minX, maxX, minY, maxY) {
+        if (!this.isActive) return;
+
+        // Move projectile
+        this.x += this.velocityX * deltaTime;
+        this.y += this.velocityY * deltaTime;
+
+        // Deactivate if out of bounds
+        if (this.x < minX || this.x > maxX || this.y < minY || this.y > maxY) {
+            this.isActive = false;
+        }
+    }
+
+    draw(ctx) {
+        if (!this.isActive) return;
+
+        ctx.fillStyle = '#FFFFFF'; // White
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// ResourcePickup class (coin)
+class ResourcePickup {
+    constructor(x, y, value = 1) {
+        this.x = x;
+        this.y = y;
+        this.radius = 8;
+        this.value = value;
+        this.isCollected = false;
+    }
+
+    draw(ctx) {
+        if (this.isCollected) return;
+
+        // Draw gold coin
+        ctx.fillStyle = '#FFD700'; // Gold
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Add border
+        ctx.strokeStyle = '#FFA500'; // Orange
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
 }
 

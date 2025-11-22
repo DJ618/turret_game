@@ -6,4 +6,6 @@ public interface IInputService
 {
     Vector2 GetMovementDirection();
     bool IsExitRequested();
+    Vector2 GetMousePosition();
+    bool IsLeftMouseButtonClicked();
 }

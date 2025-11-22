@@ -7,6 +7,13 @@ namespace TurretGame.Infrastructure.Input;
 
 public class MonoGameInputService : IInputService
 {
+    private MouseState _previousMouseState;
+
+    public MonoGameInputService()
+    {
+        _previousMouseState = Mouse.GetState();
+    }
+
     public SysVector2 GetMovementDirection()
     {
         var keyboardState = Keyboard.GetState();
@@ -31,5 +38,20 @@ public class MonoGameInputService : IInputService
 
         return keyboardState.IsKeyDown(Keys.Escape) ||
                gamePadState.Buttons.Back == ButtonState.Pressed;
+    }
+
+    public SysVector2 GetMousePosition()
+    {
+        var mouseState = Mouse.GetState();
+        return new SysVector2(mouseState.X, mouseState.Y);
+    }
+
+    public bool IsLeftMouseButtonClicked()
+    {
+        var currentMouseState = Mouse.GetState();
+        bool wasClicked = _previousMouseState.LeftButton == ButtonState.Released &&
+                         currentMouseState.LeftButton == ButtonState.Pressed;
+        _previousMouseState = currentMouseState;
+        return wasClicked;
     }
 }

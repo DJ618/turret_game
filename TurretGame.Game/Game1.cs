@@ -1,10 +1,13 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TurretGame.Application;
 using TurretGame.Application.State;
 using TurretGame.Application.Systems;
+using TurretGame.Core.Configuration;
 using TurretGame.Core.Entities;
 using TurretGame.Core.Interfaces;
 using TurretGame.Core.State;
@@ -20,6 +23,8 @@ public class Game1 : Microsoft.Xna.Framework.Game
 {
     private readonly GraphicsDeviceManager _graphics;
     private ServiceProvider _serviceProvider;
+    private IConfiguration _configuration;
+    private IOptionsMonitor<GameSettings> _gameSettingsMonitor;
 
     // Services injected from DI container
     private GameplayLoop _gameplayLoop;
@@ -73,6 +78,16 @@ public class Game1 : Microsoft.Xna.Framework.Game
         _coinAnimator = _serviceProvider.GetRequiredService<SpriteAnimator>();
         _spawnManager = _serviceProvider.GetRequiredService<SpawnManager>();
         _statisticsManager = _serviceProvider.GetRequiredService<StatisticsManager>();
+        _gameSettingsMonitor = _serviceProvider.GetRequiredService<IOptionsMonitor<GameSettings>>();
+
+        // Set up configuration change callback
+        _gameSettingsMonitor.OnChange(settings =>
+        {
+            ApplyGameSettings(settings);
+        });
+
+        // Apply initial settings
+        ApplyGameSettings(_gameSettingsMonitor.CurrentValue);
 
         // First wave will be spawned automatically by WaveManager
     }
@@ -80,6 +95,18 @@ public class Game1 : Microsoft.Xna.Framework.Game
     private ServiceProvider ConfigureServices()
     {
         var services = new ServiceCollection();
+
+        // Build configuration from appsettings.json
+        _configuration = new ConfigurationBuilder()
+            .SetBasePath(System.AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        services.AddSingleton(_configuration);
+
+        // Register GameSettings with Options pattern
+        services.Configure<GameSettings>(_configuration.GetSection("GameSettings"));
+        services.AddSingleton<IOptionsMonitor<GameSettings>, OptionsMonitor<GameSettings>>();
 
         // Core services
         var screenCenter = new SysVector2(
@@ -96,6 +123,8 @@ public class Game1 : Microsoft.Xna.Framework.Game
         services.AddSingleton<StatisticsManager>();
         services.AddSingleton<SpawnManager>();
         services.AddSingleton<WaveManager>();
+        services.AddSingleton<TurretSystem>();
+        services.AddSingleton<ProjectileSystem>();
         services.AddSingleton<ICollisionHandler, GameCollisionHandler>();
         services.AddSingleton<CollisionSystem>();
         services.AddSingleton<GameplayLoop>();
@@ -110,6 +139,9 @@ public class Game1 : Microsoft.Xna.Framework.Game
         var playerTexture = textureFactory.CreateCircleTexture((int)player.Radius, Color.Cyan);
         var hunterTexture = textureFactory.CreateCircleTexture(15, Color.Red);
         var preyTexture = textureFactory.CreateCircleTexture(15, Color.Green);
+        var turretTexture = new Texture2D(GraphicsDevice, 1, 1);
+        turretTexture.SetData(new[] { Color.Black });
+        var projectileTexture = textureFactory.CreateCircleTexture(5, Color.White);
 
         var coinSpriteSheet = Content.Load<Texture2D>("CoinSprite");
         var coinAnimator = new SpriteAnimator(coinSpriteSheet, frameCount: 10, frameDuration: 0.08f);
@@ -120,6 +152,8 @@ public class Game1 : Microsoft.Xna.Framework.Game
             playerTexture,
             hunterTexture,
             preyTexture,
+            turretTexture,
+            projectileTexture,
             coinAnimator
         ));
 
@@ -148,8 +182,58 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        // Update gameplay logic
-        _gameplayLoop.Update(deltaTime, _viewportBounds);
+        // Handle game over screen
+        if (_gameplayLoop.GameStateManager.IsGameOver())
+        {
+            var inputService = _serviceProvider.GetRequiredService<IInputService>();
+
+            // Check for restart button click
+            if (inputService.IsLeftMouseButtonClicked())
+            {
+                var mousePosition = inputService.GetMousePosition();
+
+                if (_uiRenderer.IsRestartButtonClicked(mousePosition))
+                {
+                    // Restart the game
+                    var screenCenter = new SysVector2(
+                        GraphicsDevice.Viewport.Width / 2f,
+                        GraphicsDevice.Viewport.Height / 2f
+                    );
+                    _gameplayLoop.Restart(_viewportBounds, screenCenter);
+                }
+            }
+        }
+        // Handle turret placement
+        else if (_gameplayLoop.GameStateManager.IsPlacingTurret())
+        {
+            var inputService = _serviceProvider.GetRequiredService<IInputService>();
+
+            // Check for mouse click (only call once per frame)
+            if (inputService.IsLeftMouseButtonClicked())
+            {
+                var mousePosition = inputService.GetMousePosition();
+
+                // Check if clicking on continue button
+                if (_uiRenderer.IsContinueButtonClicked(mousePosition))
+                {
+                    // Only allow continue if turret has been placed
+                    if (_gameplayLoop.TurretPlacedThisRound)
+                    {
+                        _gameplayLoop.ContinueToNextWave(_viewportBounds);
+                    }
+                }
+                // Otherwise, try to place a turret
+                else
+                {
+                    _gameplayLoop.PlaceTurret(mousePosition);
+                }
+            }
+        }
+        else
+        {
+            // Update gameplay logic
+            _gameplayLoop.Update(deltaTime, _viewportBounds);
+        }
 
         // Update coin animation
         _coinAnimator.Update(deltaTime);
@@ -166,10 +250,22 @@ public class Game1 : Microsoft.Xna.Framework.Game
         // Draw player
         _entityRenderer.DrawPlayer(_gameplayLoop.Player);
 
+        // Draw turrets
+        foreach (var turret in _gameplayLoop.EntityManager.Turrets)
+        {
+            _entityRenderer.DrawTurret(turret);
+        }
+
         // Draw enemies
         foreach (var enemy in _gameplayLoop.EntityManager.Enemies)
         {
             _entityRenderer.DrawEnemy(enemy);
+        }
+
+        // Draw projectiles
+        foreach (var projectile in _gameplayLoop.EntityManager.Projectiles)
+        {
+            _entityRenderer.DrawProjectile(projectile);
         }
 
         // Draw resource pickups
@@ -185,18 +281,44 @@ public class Game1 : Microsoft.Xna.Framework.Game
         );
 
         // Draw UI overlays
-        if (_gameplayLoop.GameStateManager.IsGameOver())
+        if (_gameplayLoop.GameStateManager.IsPlacingTurret())
         {
+            var inputService = _serviceProvider.GetRequiredService<IInputService>();
+            var mousePosition = inputService.GetMousePosition();
+            _uiRenderer.DrawTurretPlacement(
+                _gameplayLoop.WaveManager.CurrentWave,
+                mousePosition,
+                _gameplayLoop.TurretPlacedThisRound
+            );
+        }
+        else if (_gameplayLoop.GameStateManager.IsGameOver())
+        {
+            // Calculate final score
+            int score = _statisticsManager.CalculateScore(
+                _gameplayLoop.WaveManager.CurrentWave,
+                _gameplayLoop.ResourceManager.ResourceCount
+            );
+
             _uiRenderer.DrawGameOver(
                 _gameplayLoop.WaveManager.CurrentWave,
                 _gameplayLoop.ResourceManager.ResourceCount,
-                _statisticsManager.EnemiesKilled
+                _statisticsManager.EnemiesKilled,
+                score
             );
         }
 
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+
+    private void ApplyGameSettings(GameSettings settings)
+    {
+        // Update player speed
+        _gameplayLoop.Player.Speed = settings.PlayerSpeed;
+
+        // Note: Enemy speeds will be applied when new enemies spawn
+        // WaveManager will use the updated settings for new enemies
     }
 
     protected override void Dispose(bool disposing)

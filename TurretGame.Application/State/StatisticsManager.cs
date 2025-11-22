@@ -9,6 +9,12 @@ public class StatisticsManager
         EnemiesKilled++;
     }
 
+    public int CalculateScore(int highestLevelReached, int resourcesCollected)
+    {
+        // score = ((highest level reached) * (resources collected)) + enemies killed
+        return (highestLevelReached * resourcesCollected) + EnemiesKilled;
+    }
+
     public void Reset()
     {
         EnemiesKilled = 0;

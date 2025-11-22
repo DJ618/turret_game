@@ -1,4 +1,6 @@
 using System.Numerics;
+using Microsoft.Extensions.Options;
+using TurretGame.Core.Configuration;
 using TurretGame.Core.Entities;
 using TurretGame.Core.Utilities;
 
@@ -8,6 +10,7 @@ public class WaveManager
 {
     private readonly SpawnManager _spawnManager;
     private readonly EntityManager _entityManager;
+    private readonly IOptionsMonitor<GameSettings> _gameSettings;
 
     private int _currentWave;
     private int _previousFibonacci;
@@ -15,10 +18,11 @@ public class WaveManager
 
     public int CurrentWave => _currentWave;
 
-    public WaveManager(SpawnManager spawnManager, EntityManager entityManager)
+    public WaveManager(SpawnManager spawnManager, EntityManager entityManager, IOptionsMonitor<GameSettings> gameSettings)
     {
         _spawnManager = spawnManager;
         _entityManager = entityManager;
+        _gameSettings = gameSettings;
         _currentWave = 0;
         _previousFibonacci = 1;
         _currentFibonacci = 1;
@@ -28,6 +32,9 @@ public class WaveManager
     {
         _currentWave++;
 
+        // Get current settings
+        var settings = _gameSettings.CurrentValue;
+
         // Prey count follows Fibonacci sequence
         int preyCount = _currentFibonacci;
 
@@ -36,20 +43,20 @@ public class WaveManager
         _previousFibonacci = _currentFibonacci;
         _currentFibonacci = nextFibonacci;
 
-        // Hunter count increases linearly (1 per wave)
-        int hunterCount = _currentWave;
+        // Hunter count increases based on settings (multiplied by wave number)
+        int hunterCount = _currentWave * settings.HuntersPerWave;
 
-        // Spawn prey enemies (80% player speed = 320f)
+        // Spawn prey enemies using configured speed
         for (int i = 0; i < preyCount; i++)
         {
-            var prey = _spawnManager.SpawnEnemy(EnemyType.Prey, 320f, bounds);
+            var prey = _spawnManager.SpawnEnemy(EnemyType.Prey, settings.PreySpeed, bounds);
             _entityManager.AddEnemy(prey);
         }
 
-        // Spawn hunter enemies (45% player speed = 180f, spawned far from player)
+        // Spawn hunter enemies using configured speed (spawned far from player)
         for (int i = 0; i < hunterCount; i++)
         {
-            var hunter = _spawnManager.SpawnEnemy(EnemyType.Hunter, 180f, bounds, playerPosition);
+            var hunter = _spawnManager.SpawnEnemy(EnemyType.Hunter, settings.HunterSpeed, bounds, playerPosition);
             _entityManager.AddEnemy(hunter);
         }
     }
@@ -65,5 +72,12 @@ public class WaveManager
             }
         }
         return true;
+    }
+
+    public void Reset()
+    {
+        _currentWave = 0;
+        _previousFibonacci = 1;
+        _currentFibonacci = 1;
     }
 }
