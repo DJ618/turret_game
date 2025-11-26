@@ -21,10 +21,19 @@ public class Enemy
     private static readonly Random _random = new Random();
     private const float FLEE_DISTANCE_THRESHOLD = 250f; // Start fleeing when player is within 250 pixels
     private const float WANDER_SPEED_MULTIPLIER = 0.3f; // Move slower when wandering
+    private const float DIRECTION_SMOOTHING = 0.15f; // How quickly to turn (0.1 = smooth, 1.0 = instant)
+    private const int DIRECTION_UPDATE_INTERVAL = 10; // Recalculate direction every 10 frames
+    private const float EDGE_DISTANCE_THRESHOLD = 50f; // Distance from edge to be considered "at edge"
+    private const float EDGE_STUCK_TIME = 3f; // Time in seconds before forcing movement away from edge
 
     private Vector2 _wanderDirection;
+    private Vector2 _currentFleeDirection; // Smoothed flee direction
+    private Vector2 _cachedDirection; // Cached direction vector
     private float _wanderTimer;
     private float _wanderChangeInterval;
+    private int _frameCounter; // Counter for direction updates
+    private float _edgeStuckTimer; // Timer for how long enemy has been near edge
+    private bool _isNearEdge; // Whether enemy is currently near an edge
 
     public Vector2 Position { get; private set; }
     public float Speed { get; set; } = 160f;
@@ -41,6 +50,10 @@ public class Enemy
         Position = startPosition;
         Type = type;
         Speed = speed;
+        _frameCounter = 0;
+        _cachedDirection = Vector2.Zero;
+        _edgeStuckTimer = 0f;
+        _isNearEdge = false;
 
         // Assign random flee strategy for prey
         if (type == EnemyType.Prey)
@@ -53,6 +66,7 @@ public class Enemy
             // Initialize wander behavior with random direction
             // (bounds-aware direction will be set on first update)
             _wanderDirection = GetRandomDirection();
+            _currentFleeDirection = GetRandomDirection(); // Initialize flee direction
             _wanderChangeInterval = 1f + (float)_random.NextDouble() * 2f; // Change direction every 1-3 seconds
             _wanderTimer = 0f;
         }
@@ -67,41 +81,89 @@ public class Enemy
     {
         if (!IsAlive) return;
 
-        Vector2 direction;
+        // Increment frame counter
+        _frameCounter++;
 
-        if (Type == EnemyType.Hunter)
+        // Only recalculate direction every 10 frames
+        if (_frameCounter % DIRECTION_UPDATE_INTERVAL == 0)
         {
-            // Hunters chase - move toward player
-            direction = targetPosition - Position;
-        }
-        else
-        {
-            // Prey behavior depends on distance to player
-            float distanceToPlayer = Vector2.Distance(Position, targetPosition);
+            Vector2 direction;
 
-            if (distanceToPlayer < FLEE_DISTANCE_THRESHOLD)
+            if (Type == EnemyType.Hunter)
             {
-                // Player is close - flee actively
-                direction = GetFleeDirection(targetPosition, minX, maxX, minY, maxY);
+                // Hunters chase - move toward player
+                direction = targetPosition - Position;
             }
             else
             {
-                // Player is far - wander slowly, biased away from edges
-                _wanderTimer += deltaTime;
-                if (_wanderTimer >= _wanderChangeInterval)
+                // Prey behavior depends on distance to player
+                float distanceToPlayer = Vector2.Distance(Position, targetPosition);
+
+                // Check if near edge
+                bool wasNearEdge = _isNearEdge;
+                _isNearEdge = IsNearEdge(minX, maxX, minY, maxY);
+
+                // Track time spent near edge
+                if (_isNearEdge)
                 {
-                    _wanderTimer = 0f;
-                    _wanderDirection = GetWanderDirection(minX, maxX, minY, maxY);
-                    _wanderChangeInterval = 1f + (float)_random.NextDouble() * 2f;
+                    _edgeStuckTimer += deltaTime;
                 }
-                direction = _wanderDirection;
+                else
+                {
+                    _edgeStuckTimer = 0f;
+                }
+
+                // If stuck at edge for too long, force movement away from edge
+                if (_edgeStuckTimer >= EDGE_STUCK_TIME)
+                {
+                    direction = GetDirectionAwayFromEdge(minX, maxX, minY, maxY);
+                    _edgeStuckTimer = 0f; // Reset timer after forcing movement
+                }
+                else if (distanceToPlayer < FLEE_DISTANCE_THRESHOLD)
+                {
+                    // Player is close - flee actively with smooth direction changes
+                    Vector2 desiredFleeDirection = GetFleeDirection(targetPosition, minX, maxX, minY, maxY);
+
+                    // Normalize desired direction
+                    if (desiredFleeDirection.Length() > 0)
+                    {
+                        desiredFleeDirection = Vector2.Normalize(desiredFleeDirection);
+                    }
+
+                    // Smoothly interpolate current direction toward desired direction
+                    // This prevents jerky circular motion
+                    _currentFleeDirection = Vector2.Lerp(_currentFleeDirection, desiredFleeDirection, DIRECTION_SMOOTHING);
+
+                    // Normalize the result
+                    if (_currentFleeDirection.Length() > 0)
+                    {
+                        _currentFleeDirection = Vector2.Normalize(_currentFleeDirection);
+                    }
+
+                    direction = _currentFleeDirection;
+                }
+                else
+                {
+                    // Player is far - wander slowly, biased away from edges
+                    _wanderTimer += deltaTime;
+                    if (_wanderTimer >= _wanderChangeInterval)
+                    {
+                        _wanderTimer = 0f;
+                        _wanderDirection = GetWanderDirection(minX, maxX, minY, maxY);
+                        _wanderChangeInterval = 1f + (float)_random.NextDouble() * 2f;
+                    }
+                    direction = _wanderDirection;
+                }
             }
+
+            // Cache the calculated direction
+            _cachedDirection = direction;
         }
 
-        // Normalize and move if we have a valid direction
-        if (direction.Length() > 0)
+        // Normalize and move if we have a valid cached direction
+        if (_cachedDirection.Length() > 0)
         {
-            direction = Vector2.Normalize(direction);
+            Vector2 normalizedDirection = Vector2.Normalize(_cachedDirection);
 
             // Adjust speed based on behavior (wander slower)
             float effectiveSpeed = Speed;
@@ -110,7 +172,7 @@ public class Enemy
                 effectiveSpeed *= WANDER_SPEED_MULTIPLIER;
             }
 
-            Position += direction * effectiveSpeed * deltaTime;
+            Position += normalizedDirection * effectiveSpeed * deltaTime;
         }
 
         // Clamp to bounds (accounting for radius)
@@ -204,5 +266,40 @@ public class Enemy
             // Not near edge, wander randomly
             return GetRandomDirection();
         }
+    }
+
+    private bool IsNearEdge(float minX, float maxX, float minY, float maxY)
+    {
+        // Check if enemy is within threshold distance from any edge
+        float distToLeft = Position.X - minX;
+        float distToRight = maxX - Position.X;
+        float distToTop = Position.Y - minY;
+        float distToBottom = maxY - Position.Y;
+
+        return distToLeft < EDGE_DISTANCE_THRESHOLD ||
+               distToRight < EDGE_DISTANCE_THRESHOLD ||
+               distToTop < EDGE_DISTANCE_THRESHOLD ||
+               distToBottom < EDGE_DISTANCE_THRESHOLD;
+    }
+
+    private Vector2 GetDirectionAwayFromEdge(float minX, float maxX, float minY, float maxY)
+    {
+        // Calculate center of bounds
+        Vector2 center = new Vector2((minX + maxX) / 2f, (minY + maxY) / 2f);
+
+        // Direction toward center
+        Vector2 towardCenter = Vector2.Normalize(center - Position);
+
+        // Add random angle variation (-45 to +45 degrees) for natural movement
+        float randomAngle = (float)(_random.NextDouble() * Math.PI / 2 - Math.PI / 4);
+        float cos = (float)Math.Cos(randomAngle);
+        float sin = (float)Math.Sin(randomAngle);
+
+        Vector2 rotatedDirection = new Vector2(
+            towardCenter.X * cos - towardCenter.Y * sin,
+            towardCenter.X * sin + towardCenter.Y * cos
+        );
+
+        return rotatedDirection;
     }
 }

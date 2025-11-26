@@ -23,6 +23,8 @@ public class GameplayLoop
     private int _turretsPlacedThisRound;
     private int _turretsAllowedThisRound;
 
+    private const int MAX_TURRETS = 15; // Maximum turrets allowed on the board
+
     public GameplayLoop(
         Player player,
         EntityManager entityManager,
@@ -85,7 +87,7 @@ public class GameplayLoop
             else
             {
                 _gameStateManager.ChangeState(Core.State.GameState.ChoosingUpgrade);
-                _upgradeManager.GenerateUpgradeOptions();
+                _upgradeManager.GenerateUpgradeOptions(_entityManager.Turrets.Count, MAX_TURRETS);
                 return;
             }
         }
@@ -108,7 +110,7 @@ public class GameplayLoop
         _entityManager.RemoveCollectedPickups();
     }
 
-    public void SelectUpgrade(int optionIndex)
+    public void SelectUpgrade(int optionIndex, Bounds bounds)
     {
         // Only select if in ChoosingUpgrade state
         if (!_gameStateManager.IsChoosingUpgrade())
@@ -118,10 +120,24 @@ public class GameplayLoop
 
         _upgradeManager.SelectUpgrade(optionIndex);
 
+        // Check if we've reached max turrets - if so, skip turret placement
+        int currentTurretCount = _entityManager.Turrets.Count;
+        if (currentTurretCount >= MAX_TURRETS)
+        {
+            // Skip turret placement, go straight to next wave
+            _gameStateManager.ChangeState(Core.State.GameState.Playing);
+            _waveManager.StartNextWave(bounds, _player.Position);
+            return;
+        }
+
+        // Calculate how many turrets we can place this round
+        int remainingTurretSlots = MAX_TURRETS - currentTurretCount;
+        int desiredTurrets = 1 + _upgradeManager.UpgradeState.ExtraTurretsPerRound;
+        _turretsAllowedThisRound = System.Math.Min(desiredTurrets, remainingTurretSlots);
+
         // Transition to turret placement
         _gameStateManager.ChangeState(Core.State.GameState.PlacingTurret);
         _turretsPlacedThisRound = 0;
-        _turretsAllowedThisRound = 1 + _upgradeManager.UpgradeState.ExtraTurretsPerRound;
     }
 
     public void PlaceTurret(System.Numerics.Vector2 position)

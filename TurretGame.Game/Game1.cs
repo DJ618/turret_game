@@ -181,13 +181,12 @@ public class Game1 : Microsoft.Xna.Framework.Game
             return;
         }
 
+        var inputService = _serviceProvider.GetRequiredService<IInputService>();
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // Handle game over screen
         if (_gameplayLoop.GameStateManager.IsGameOver())
         {
-            var inputService = _serviceProvider.GetRequiredService<IInputService>();
-
             // Check for restart button click
             if (inputService.IsLeftMouseButtonClicked())
             {
@@ -207,8 +206,6 @@ public class Game1 : Microsoft.Xna.Framework.Game
         // Handle upgrade selection
         else if (_gameplayLoop.GameStateManager.IsChoosingUpgrade())
         {
-            var inputService = _serviceProvider.GetRequiredService<IInputService>();
-
             // Check for mouse click
             if (inputService.IsLeftMouseButtonClicked())
             {
@@ -220,15 +217,13 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
                 if (selectedOption >= 0)
                 {
-                    _gameplayLoop.SelectUpgrade(selectedOption);
+                    _gameplayLoop.SelectUpgrade(selectedOption, _viewportBounds);
                 }
             }
         }
         // Handle turret placement
         else if (_gameplayLoop.GameStateManager.IsPlacingTurret())
         {
-            var inputService = _serviceProvider.GetRequiredService<IInputService>();
-
             // Check for mouse click (only call once per frame)
             if (inputService.IsLeftMouseButtonClicked())
             {
@@ -298,7 +293,11 @@ public class Game1 : Microsoft.Xna.Framework.Game
         // Draw resource counter and wave number
         _uiRenderer.DrawResourceCounter(
             _gameplayLoop.ResourceManager.ResourceCount,
-            _gameplayLoop.WaveManager.CurrentWave
+            _gameplayLoop.WaveManager.CurrentWave,
+            _gameplayLoop.EntityManager.GetActiveHunterCount(),
+            _gameplayLoop.EntityManager.GetActivePreyCount(),
+            _gameplayLoop.EntityManager.Turrets.Count,
+            15  // Max turrets
         );
 
         // Draw UI overlays

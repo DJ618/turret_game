@@ -25,10 +25,22 @@ public class UpgradeState
     /// </summary>
     public int ResourceValue => 1 + ResourceValueBonus;
 
+    /// <summary>
+    /// Hunter (chase enemy) speed multiplier (1.0 = no change, 0.95 = 5% slower)
+    /// </summary>
+    public float HunterSpeedMultiplier { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Prey (fleeing enemy) speed multiplier (1.0 = no change, 0.95 = 5% slower)
+    /// </summary>
+    public float PreySpeedMultiplier { get; set; } = 1.0f;
+
     public void Reset()
     {
         ExtraTurretsPerRound = 0;
         ProjectileVelocityMultiplier = 1.0f;
         ResourceValueBonus = 0;
+        HunterSpeedMultiplier = 1.0f;
+        PreySpeedMultiplier = 1.0f;
     }
 }

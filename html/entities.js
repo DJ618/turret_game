@@ -67,6 +67,18 @@ class Enemy {
         // Constants for prey behavior
         this.FLEE_DISTANCE_THRESHOLD = 250; // Start fleeing when player is within 250 pixels
         this.WANDER_SPEED_MULTIPLIER = 0.3; // Move slower when wandering
+        this.DIRECTION_SMOOTHING = 0.15; // How quickly to turn (0.1 = smooth, 1.0 = instant)
+        this.DIRECTION_UPDATE_INTERVAL = 10; // Recalculate direction every 10 frames
+        this.EDGE_DISTANCE_THRESHOLD = 50; // Distance from edge to be considered "at edge"
+        this.EDGE_STUCK_TIME = 3.0; // Time in seconds before forcing movement away from edge
+
+        // Direction caching
+        this.cachedDirection = { x: 0, y: 0 };
+        this.frameCounter = 0;
+
+        // Edge stuck detection
+        this.edgeStuckTimer = 0;
+        this.isNearEdge = false;
 
         // Assign random flee strategy for prey
         if (type === EnemyType.PREY) {
@@ -77,6 +89,7 @@ class Enemy {
 
             // Initialize wander behavior with random direction
             this.wanderDirection = this.getRandomDirection();
+            this.currentFleeDirection = this.getRandomDirection(); // Initialize flee direction
             this.wanderChangeInterval = 1 + Math.random() * 2; // Change direction every 1-3 seconds
             this.wanderTimer = 0;
         }
@@ -93,39 +106,89 @@ class Enemy {
     update(playerX, playerY, deltaTime, minX, maxX, minY, maxY) {
         if (!this.isAlive) return;
 
-        let dirX, dirY;
+        // Increment frame counter
+        this.frameCounter++;
 
-        if (this.type === EnemyType.HUNTER) {
-            // Hunters chase - move toward player
-            dirX = playerX - this.x;
-            dirY = playerY - this.y;
-        } else {
-            // Prey behavior depends on distance to player
-            const distanceToPlayer = this.distance(this.x, this.y, playerX, playerY);
+        // Only recalculate direction every 10 frames
+        if (this.frameCounter % this.DIRECTION_UPDATE_INTERVAL === 0) {
+            let dirX, dirY;
 
-            if (distanceToPlayer < this.FLEE_DISTANCE_THRESHOLD) {
-                // Player is close - flee actively
-                const fleeDir = this.getFleeDirection(playerX, playerY, minX, maxX, minY, maxY);
-                dirX = fleeDir.x;
-                dirY = fleeDir.y;
+            if (this.type === EnemyType.HUNTER) {
+                // Hunters chase - move toward player
+                dirX = playerX - this.x;
+                dirY = playerY - this.y;
             } else {
-                // Player is far - wander slowly, biased away from edges
-                this.wanderTimer += deltaTime;
-                if (this.wanderTimer >= this.wanderChangeInterval) {
-                    this.wanderTimer = 0;
-                    this.wanderDirection = this.getWanderDirection(minX, maxX, minY, maxY);
-                    this.wanderChangeInterval = 1 + Math.random() * 2;
+                // Prey behavior depends on distance to player
+                const distanceToPlayer = this.distance(this.x, this.y, playerX, playerY);
+
+                // Check if near edge
+                this.isNearEdge = this.checkIsNearEdge(minX, maxX, minY, maxY);
+
+                // Track time spent near edge
+                if (this.isNearEdge) {
+                    this.edgeStuckTimer += deltaTime;
+                } else {
+                    this.edgeStuckTimer = 0;
                 }
-                dirX = this.wanderDirection.x;
-                dirY = this.wanderDirection.y;
+
+                // If stuck at edge for too long, force movement away from edge
+                if (this.edgeStuckTimer >= this.EDGE_STUCK_TIME) {
+                    const awayDir = this.getDirectionAwayFromEdge(minX, maxX, minY, maxY);
+                    dirX = awayDir.x;
+                    dirY = awayDir.y;
+                    this.edgeStuckTimer = 0; // Reset timer after forcing movement
+                } else if (distanceToPlayer < this.FLEE_DISTANCE_THRESHOLD) {
+                    // Player is close - flee actively with smooth direction changes
+                    let desiredFleeDir = this.getFleeDirection(playerX, playerY, minX, maxX, minY, maxY);
+
+                    // Normalize desired direction
+                    const desiredLength = Math.sqrt(desiredFleeDir.x * desiredFleeDir.x + desiredFleeDir.y * desiredFleeDir.y);
+                    if (desiredLength > 0) {
+                        desiredFleeDir.x /= desiredLength;
+                        desiredFleeDir.y /= desiredLength;
+                    }
+
+                    // Smoothly interpolate current direction toward desired direction
+                    // This prevents jerky circular motion
+                    this.currentFleeDirection.x = this.lerp(this.currentFleeDirection.x, desiredFleeDir.x, this.DIRECTION_SMOOTHING);
+                    this.currentFleeDirection.y = this.lerp(this.currentFleeDirection.y, desiredFleeDir.y, this.DIRECTION_SMOOTHING);
+
+                    // Normalize the result
+                    const currentLength = Math.sqrt(this.currentFleeDirection.x * this.currentFleeDirection.x +
+                                                   this.currentFleeDirection.y * this.currentFleeDirection.y);
+                    if (currentLength > 0) {
+                        this.currentFleeDirection.x /= currentLength;
+                        this.currentFleeDirection.y /= currentLength;
+                    }
+
+                    dirX = this.currentFleeDirection.x;
+                    dirY = this.currentFleeDirection.y;
+                } else {
+                    // Player is far - wander slowly, biased away from edges
+                    this.wanderTimer += deltaTime;
+                    if (this.wanderTimer >= this.wanderChangeInterval) {
+                        this.wanderTimer = 0;
+                        this.wanderDirection = this.getWanderDirection(minX, maxX, minY, maxY);
+                        this.wanderChangeInterval = 1 + Math.random() * 2;
+                    }
+                    dirX = this.wanderDirection.x;
+                    dirY = this.wanderDirection.y;
+                }
             }
+
+            // Cache the calculated direction
+            this.cachedDirection.x = dirX;
+            this.cachedDirection.y = dirY;
         }
 
-        // Normalize direction
-        const length = Math.sqrt(dirX * dirX + dirY * dirY);
+        // Normalize cached direction
+        const length = Math.sqrt(this.cachedDirection.x * this.cachedDirection.x +
+                                this.cachedDirection.y * this.cachedDirection.y);
+        let normalizedDirX = 0;
+        let normalizedDirY = 0;
         if (length > 0) {
-            dirX /= length;
-            dirY /= length;
+            normalizedDirX = this.cachedDirection.x / length;
+            normalizedDirY = this.cachedDirection.y / length;
         }
 
         // Adjust speed based on behavior (wander slower)
@@ -138,8 +201,8 @@ class Enemy {
         }
 
         // Apply movement
-        this.x += dirX * effectiveSpeed * deltaTime;
-        this.y += dirY * effectiveSpeed * deltaTime;
+        this.x += normalizedDirX * effectiveSpeed * deltaTime;
+        this.y += normalizedDirY * effectiveSpeed * deltaTime;
 
         // Clamp to bounds (accounting for radius)
         this.x = Math.max(minX + this.radius, Math.min(maxX - this.radius, this.x));
@@ -253,6 +316,50 @@ class Enemy {
         const dx = x2 - x1;
         const dy = y2 - y1;
         return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    lerp(a, b, t) {
+        // Linear interpolation: a + (b - a) * t
+        return a + (b - a) * t;
+    }
+
+    checkIsNearEdge(minX, maxX, minY, maxY) {
+        // Check if enemy is within threshold distance from any edge
+        const distToLeft = this.x - minX;
+        const distToRight = maxX - this.x;
+        const distToTop = this.y - minY;
+        const distToBottom = maxY - this.y;
+
+        return distToLeft < this.EDGE_DISTANCE_THRESHOLD ||
+               distToRight < this.EDGE_DISTANCE_THRESHOLD ||
+               distToTop < this.EDGE_DISTANCE_THRESHOLD ||
+               distToBottom < this.EDGE_DISTANCE_THRESHOLD;
+    }
+
+    getDirectionAwayFromEdge(minX, maxX, minY, maxY) {
+        // Calculate center of bounds
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        // Direction toward center
+        let towardCenterX = centerX - this.x;
+        let towardCenterY = centerY - this.y;
+        const centerLength = Math.sqrt(towardCenterX * towardCenterX + towardCenterY * towardCenterY);
+
+        if (centerLength > 0) {
+            towardCenterX /= centerLength;
+            towardCenterY /= centerLength;
+        }
+
+        // Add random angle variation (-45 to +45 degrees) for natural movement
+        const randomAngle = Math.random() * Math.PI / 2 - Math.PI / 4;
+        const cos = Math.cos(randomAngle);
+        const sin = Math.sin(randomAngle);
+
+        return {
+            x: towardCenterX * cos - towardCenterY * sin,
+            y: towardCenterX * sin + towardCenterY * cos
+        };
     }
 
     draw(ctx) {

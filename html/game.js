@@ -11,6 +11,7 @@ const Upgrades = {
     EXTRA_TURRET: {
         name: 'Extra Turret',
         description: '+1 turret placement per round',
+        maxSelections: 2, // Limit to 2 selections (max 3 turrets per round)
         apply: (state) => {
             state.extraTurretsPerRound++;
         }
@@ -28,6 +29,20 @@ const Upgrades = {
         apply: (state) => {
             state.resourceValueBonus++;
         }
+    },
+    SLOW_HUNTERS: {
+        name: 'Slow Chase Enemies',
+        description: '-5% chase enemy speed',
+        apply: (state) => {
+            state.hunterSpeedMultiplier *= 0.95;
+        }
+    },
+    SLOW_PREY: {
+        name: 'Slow Fleeing Enemies',
+        description: '-5% fleeing enemy speed',
+        apply: (state) => {
+            state.preySpeedMultiplier *= 0.95;
+        }
     }
 };
 
@@ -36,7 +51,8 @@ const CONFIG = {
     playerSpeed: 400,
     hunterSpeed: 180,
     preySpeed: 320,
-    huntersPerWave: 1
+    huntersPerWave: 1,
+    maxTurrets: 15  // Maximum turrets allowed on the board
 };
 
 // Game class
@@ -60,6 +76,7 @@ class Game {
         this.currentWave = 0;
         this.previousFibonacci = 1;
         this.currentFibonacci = 1;
+        this.enemySpeedMultiplier = 1.0; // Speed increases 1% per round, max 90% of player speed
 
         // Resource management
         this.resourceCount = 0;
@@ -69,9 +86,12 @@ class Game {
         this.upgradeState = {
             extraTurretsPerRound: 0,
             projectileVelocityMultiplier: 1.0,
-            resourceValueBonus: 0
+            resourceValueBonus: 0,
+            hunterSpeedMultiplier: 1.0,
+            preySpeedMultiplier: 1.0
         };
         this.currentUpgradeOptions = [];
+        this.upgradeSelectionCounts = {}; // Track how many times each upgrade has been selected
 
         // Turret placement
         this.turretsPlacedThisRound = 0;
@@ -160,6 +180,15 @@ class Game {
     startNextWave() {
         this.currentWave++;
 
+        // Increase enemy speed by 1% each round (after wave 1)
+        if (this.currentWave > 1) {
+            this.enemySpeedMultiplier *= 1.01;
+
+            // Cap at 90% of player speed
+            const maxSpeedMultiplier = (CONFIG.playerSpeed * 0.9) / CONFIG.preySpeed; // Calculate max based on prey base speed
+            this.enemySpeedMultiplier = Math.min(this.enemySpeedMultiplier, maxSpeedMultiplier);
+        }
+
         // Calculate enemy counts
         const preyCount = this.currentFibonacci;
         const hunterCount = this.currentWave * CONFIG.huntersPerWave;
@@ -169,17 +198,19 @@ class Game {
         this.previousFibonacci = this.currentFibonacci;
         this.currentFibonacci = nextFib;
 
-        // Spawn prey enemies
+        // Spawn prey enemies with speed multipliers and wave speed increase applied
+        const adjustedPreySpeed = CONFIG.preySpeed * this.upgradeState.preySpeedMultiplier * this.enemySpeedMultiplier;
         for (let i = 0; i < preyCount; i++) {
             const pos = this.getRandomEdgePosition();
-            const prey = new Enemy(pos.x, pos.y, EnemyType.PREY, CONFIG.preySpeed);
+            const prey = new Enemy(pos.x, pos.y, EnemyType.PREY, adjustedPreySpeed);
             this.enemies.push(prey);
         }
 
-        // Spawn hunter enemies (starting from wave 2)
+        // Spawn hunter enemies with speed multipliers and wave speed increase applied (starting from wave 2)
+        const adjustedHunterSpeed = CONFIG.hunterSpeed * this.upgradeState.hunterSpeedMultiplier * this.enemySpeedMultiplier;
         for (let i = 0; i < hunterCount; i++) {
             const pos = this.getRandomEdgePosition(this.player.x, this.player.y);
-            const hunter = new Enemy(pos.x, pos.y, EnemyType.HUNTER, CONFIG.hunterSpeed);
+            const hunter = new Enemy(pos.x, pos.y, EnemyType.HUNTER, adjustedHunterSpeed);
             this.enemies.push(hunter);
         }
 
@@ -226,17 +257,53 @@ class Game {
     }
 
     generateUpgradeOptions() {
-        // Create array of all upgrade types
-        const allUpgrades = Object.values(Upgrades);
+        // Separate Extra Turret from other upgrades
+        let extraTurretUpgrade = null;
+        const otherUpgrades = [];
 
-        // Shuffle and select 3 random upgrades
-        const shuffled = allUpgrades.slice();
+        for (const [upgradeName, upgrade] of Object.entries(Upgrades)) {
+            let isAvailable = true;
+
+            // Check if this upgrade has a limit
+            if (upgrade.maxSelections !== undefined) {
+                // Get current selection count
+                const currentSelections = this.upgradeSelectionCounts[upgradeName] || 0;
+
+                // Only available if below limit
+                isAvailable = currentSelections < upgrade.maxSelections;
+            }
+
+            if (isAvailable) {
+                // Separate Extra Turret from other upgrades
+                if (upgradeName === 'EXTRA_TURRET') {
+                    extraTurretUpgrade = upgrade;
+                } else {
+                    otherUpgrades.push(upgrade);
+                }
+            }
+        }
+
+        // Always include Extra Turret if available
+        this.currentUpgradeOptions = [];
+        if (extraTurretUpgrade !== null) {
+            this.currentUpgradeOptions.push(extraTurretUpgrade);
+        }
+
+        // Add 1 random other upgrade (or more if Extra Turret is exhausted)
+        const remainingSlots = 2 - this.currentUpgradeOptions.length;
+        const optionsToGenerate = Math.min(remainingSlots, otherUpgrades.length);
+
+        // Shuffle other upgrades
+        const shuffled = otherUpgrades.slice();
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        this.currentUpgradeOptions = shuffled.slice(0, Math.min(3, shuffled.length));
+        // Add the random selections
+        for (let i = 0; i < optionsToGenerate; i++) {
+            this.currentUpgradeOptions.push(shuffled[i]);
+        }
     }
 
     selectUpgrade(optionIndex) {
@@ -246,12 +313,34 @@ class Game {
 
         const selectedUpgrade = this.currentUpgradeOptions[optionIndex];
         selectedUpgrade.apply(this.upgradeState);
+
+        // Track upgrade selection count
+        // Find the upgrade name by comparing the upgrade object
+        for (const [upgradeName, upgrade] of Object.entries(Upgrades)) {
+            if (upgrade === selectedUpgrade) {
+                this.upgradeSelectionCounts[upgradeName] = (this.upgradeSelectionCounts[upgradeName] || 0) + 1;
+                break;
+            }
+        }
+
         this.currentUpgradeOptions = [];
+
+        // Check if we've reached max turrets - if so, skip turret placement
+        const currentTurretCount = this.turrets.length;
+        if (currentTurretCount >= CONFIG.maxTurrets) {
+            // Skip turret placement, go straight to next wave
+            this.startNextWave();
+            return;
+        }
+
+        // Calculate how many turrets we can place this round
+        const remainingTurretSlots = CONFIG.maxTurrets - currentTurretCount;
+        const desiredTurrets = 1 + this.upgradeState.extraTurretsPerRound;
+        this.turretsAllowedThisRound = Math.min(desiredTurrets, remainingTurretSlots);
 
         // Transition to turret placement
         this.state = GameState.PLACING_TURRET;
         this.turretsPlacedThisRound = 0;
-        this.turretsAllowedThisRound = 1 + this.upgradeState.extraTurretsPerRound;
     }
 
     placeTurret(x, y) {
@@ -292,7 +381,7 @@ class Game {
         const buttonWidth = 350;
         const buttonHeight = 120;
         const spacing = 40;
-        const totalWidth = buttonWidth * 3 + spacing * 2;
+        const totalWidth = buttonWidth * 2 + spacing; // 2 buttons instead of 3
         const startX = this.canvas.width / 2 - totalWidth / 2;
         const startY = this.canvas.height / 2 - 50;
 
@@ -380,6 +469,26 @@ class Game {
         const resourceValue = 1 + this.upgradeState.resourceValueBonus;
         const pickup = new ResourcePickup(pickupX, pickupY, resourceValue);
         this.pickups.push(pickup);
+    }
+
+    getActiveHunterCount() {
+        let count = 0;
+        for (const enemy of this.enemies) {
+            if (enemy.isAlive && enemy.type === EnemyType.HUNTER) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    getActivePreyCount() {
+        let count = 0;
+        for (const enemy of this.enemies) {
+            if (enemy.isAlive && enemy.type === EnemyType.PREY) {
+                count++;
+            }
+        }
+        return count;
     }
 
     calculateScore() {
@@ -664,6 +773,20 @@ class Game {
 
         this.ctx.fillStyle = 'white';
         this.ctx.fillText(`Wave: ${this.currentWave}`, 20, 80);
+
+        // Draw turret count
+        this.ctx.fillStyle = '#00FFFF'; // Cyan
+        this.ctx.fillText(`Turrets: ${this.turrets.length}/${CONFIG.maxTurrets}`, 20, 140);
+
+        // Draw enemy counters
+        const hunterCount = this.getActiveHunterCount();
+        const preyCount = this.getActivePreyCount();
+
+        this.ctx.fillStyle = '#FF0000'; // Red
+        this.ctx.fillText(`Chase Enemies: ${hunterCount}`, 20, 200);
+
+        this.ctx.fillStyle = '#ADD8E6'; // Light Blue
+        this.ctx.fillText(`Fleeing Enemies: ${preyCount}`, 20, 260);
 
         // Draw upgrade selection overlay
         if (this.state === GameState.CHOOSING_UPGRADE) {

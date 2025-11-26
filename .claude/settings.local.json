@@ -16,7 +16,8 @@
       "Bash(dotnet mgcb:*)",
       "Bash(dotnet clean:*)",
       "Bash(dotnet msbuild:*)",
-      "Bash(start index.html)"
+      "Bash(start index.html)",
+      "Bash(start html/index.html)"
     ],
     "deny": [],
     "ask": []

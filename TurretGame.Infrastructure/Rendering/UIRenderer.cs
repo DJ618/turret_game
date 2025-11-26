@@ -116,7 +116,7 @@ public class UIRenderer
         );
     }
 
-    public void DrawResourceCounter(int resourceCount, int currentWave)
+    public void DrawResourceCounter(int resourceCount, int currentWave, int hunterCount, int preyCount, int turretCount, int maxTurrets)
     {
         // Draw resource count in top-left corner
         string resourceText = $"Resources: {resourceCount}";
@@ -127,6 +127,21 @@ public class UIRenderer
         string waveText = $"Wave: {currentWave}";
         var wavePosition = new XnaVector2(20, 80);
         _spriteBatch.DrawString(_font, waveText, wavePosition, Color.White);
+
+        // Draw turret count
+        string turretText = $"Turrets: {turretCount}/{maxTurrets}";
+        var turretPosition = new XnaVector2(20, 140);
+        _spriteBatch.DrawString(_font, turretText, turretPosition, Color.Cyan);
+
+        // Draw hunter count
+        string hunterText = $"Chase Enemies: {hunterCount}";
+        var hunterPosition = new XnaVector2(20, 200);
+        _spriteBatch.DrawString(_font, hunterText, hunterPosition, Color.Red);
+
+        // Draw prey count
+        string preyText = $"Fleeing Enemies: {preyCount}";
+        var preyPosition = new XnaVector2(20, 260);
+        _spriteBatch.DrawString(_font, preyText, preyPosition, Color.LightBlue);
     }
 
     public void DrawTurretPlacement(int currentWave, SysVector2 mousePosition, int turretsPlaced, int turretsAllowed)
@@ -296,5 +311,17 @@ public class UIRenderer
         int x = _graphicsDevice.Viewport.Width / 2 - buttonWidth / 2;
         int y = startY + (index * (buttonHeight + buttonSpacing));
         return new Rectangle(x, y, buttonWidth, buttonHeight);
+    }
+
+    private void DrawRectangleBorder(Rectangle rect, Color color, int thickness)
+    {
+        // Top
+        _spriteBatch.Draw(_buttonTexture, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+        // Bottom
+        _spriteBatch.Draw(_buttonTexture, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
+        // Left
+        _spriteBatch.Draw(_buttonTexture, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+        // Right
+        _spriteBatch.Draw(_buttonTexture, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
     }
 }

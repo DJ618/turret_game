@@ -100,6 +100,32 @@ public class EntityManager
         }
     }
 
+    public int GetActiveHunterCount()
+    {
+        int count = 0;
+        foreach (var enemy in _enemies)
+        {
+            if (enemy.IsAlive && enemy.Type == EnemyType.Hunter)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int GetActivePreyCount()
+    {
+        int count = 0;
+        foreach (var enemy in _enemies)
+        {
+            if (enemy.IsAlive && enemy.Type == EnemyType.Prey)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public void Clear()
     {
         _enemies.Clear();
