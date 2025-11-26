@@ -1,165 +1,258 @@
-# TurretGame - MVP Development Roadmap
+# Turret Game
 
-## MVP Definition
-Playable game demonstrating the core addictive loop: hunt fleeing enemies while avoiding pursuers, collect resources, place turrets, get stronger, balance offense and defense.
-
-**CORE DYNAMIC: HUNT the many (prey) while SURVIVING the few (hunters)**
-
-**MVP Success Criteria:**
-- 3-5 minute runs feel complete
-- Player wants to try "one more run"
-- Dual-threat gameplay (hunting + survival) is functional and creates tension
-
-## Technical Stack
-- **.NET 8.0** (LTS)
-- **MonoGame 3.8.1.303** (mgdesktopgl template)
-- **Development Environment**: Visual Studio
+A 2D top-down roguelike wave survival game where you **hunt fleeing enemies** while **avoiding pursuing threats**. Build turrets, collect resources, and survive increasingly difficult waves in this dual-threat gameplay experience.
 
 ---
 
-## DESIGN EVOLUTION (Sprint 1.2)
+## 🎮 Two Versions Available
 
-**ORIGINAL CONCEPT**: Survive waves of enemies chasing you (traditional survival)
-**ATTEMPTED PIVOT**: Hunt down enemies that flee from you (pure hunting)
-**FINAL DECISION**: Hybrid system with BOTH enemy types
+This game is available in **two parallel implementations** with feature parity:
 
-**Dual-Threat System:**
-- **~80% PREY enemies**: FLEE from player and turrets - must be hunted down
-- **~20% HUNTER enemies**: CHASE the player - must be avoided
-- Creates unique tension: offensive hunting vs defensive survival
-- Player balances aggression (chase prey) with caution (avoid hunters)
-- Gameplay loop: Hunt → Survive → Build → Repeat with more threats
+### 🖥️ .NET Desktop Version
+High-performance desktop application built with **MonoGame** and **.NET 8.0**
+- Native performance
+- Clean Architecture with dependency injection
+- Fullscreen gameplay
+- Configuration hot-reload support
 
-**Why this works:**
-- Combines best of both designs: hunting gameplay + survival pressure
-- Creates dynamic positioning challenges
-- Visual clarity needed to distinguish prey (green?) from hunters (red?)
-- More interesting than pure survival or pure hunting alone
+**[→ .NET Installation & Play Instructions](DOTNET_SETUP.md)**
 
----
+### 🌐 HTML5 Browser Version
+Instant-play web version built with **HTML5 Canvas** and vanilla JavaScript
+- No installation required
+- Play directly in your browser
+- Cross-platform (Windows, Mac, Linux)
+- Portable and easy to share
 
-## Phase 1: Foundation (Weeks 1-2)
-
-### Sprint 1.1: Project Setup & Player Movement
-- Solution structure scaffolding
-- Player entity (position, velocity)
-- WASD movement with bounds checking
-- Basic rendering (colored rectangle for player)
-- **Deliverable**: Player moves around empty screen
-
-### Sprint 1.2: Enemy Basics & Dual AI
-- Enemy entity (position, velocity, health, type)
-- **HUNTER AI** (move TOWARD player) - chase/pursuit behavior
-- **PREY AI** (move AWAY from player) - flee/evade behavior
-- Spawning system (spawn at screen edges, 80% prey / 20% hunters)
-- Basic collision detection (circle-based)
-- **Deliverable**: Two enemy types with opposite behaviors, collision detected
-
-### Sprint 1.3: Combat & Resources
-- Enemy death on collision with player (placeholder for turret damage)
-- Resource drop entity (pickups)
-- Player collection on overlap
-- Resource counter UI
-- **Deliverable**: Kill enemy → collect resource → counter updates
+**[→ HTML5 Installation & Play Instructions](HTML_SETUP.md)**
 
 ---
 
-## Phase 2: Core Loop (Weeks 3-4)
+## 🎯 Game Overview
 
-### Sprint 2.1: Wave System
-- Wave state machine (preparation → wave → build)
-- Wave timer/counter
-- Enemy spawning (X enemies per wave, increases each wave, maintains ~80/20 prey/hunter ratio)
-- Wave completion detection
-- **Deliverable**: Waves spawn with mixed enemy types, escalate, pause for build phase
+### Core Gameplay Loop
+1. **Hunt** fleeing prey enemies (green) for resources
+2. **Survive** pursuing hunter enemies (red)
+3. **Build** defensive turrets during upgrade phases
+4. **Upgrade** your capabilities between waves
+5. **Repeat** as difficulty escalates
 
-### Sprint 2.2: Turret Placement
-- Turret entity (position, range, damage, fire rate)
-- Placement UI/system (click to place during build phase)
-- Cost system (deduct resources on placement)
-- Turret rendering (distinguish from player/enemies)
-- **Deliverable**: Place turrets, they appear on field
-
-### Sprint 2.3: Turret Combat
-- Target acquisition (find nearest enemy in range, regardless of type)
-- Projectile entity (position, velocity, damage)
-- Projectile-enemy collision
-- Enemy health/death from turret damage
-- **Deliverable**: Turrets shoot and kill both prey and hunter enemies
+### Key Features
+- ✅ **Dual-threat AI system**: Hunt prey while surviving hunters
+- ✅ **Wave-based progression**: Fibonacci scaling for prey, linear for hunters
+- ✅ **Strategic turret placement**: Max 15 turrets, auto-targeting
+- ✅ **Upgrade system**: 5 unique upgrades with selection limits
+- ✅ **Progressive difficulty**: 1% speed increase per wave (capped at 90% player speed)
+- ✅ **Smooth AI behavior**: Frame-optimized movement with edge detection
+- ✅ **Real-time statistics**: Track resources, waves, enemies, and turrets
 
 ---
 
-## Phase 3: Economy & Progression (Weeks 5-6)
+## 🎮 Controls
 
-### Sprint 3.1: Passive Generators
-- Generator entity (production rate, cost)
-- Resource generation over time
-- Generator placement system
-- Visual distinction (generator vs turret)
-- **Deliverable**: Place generators, passive income flows
-
-### Sprint 3.2: Upgrade System
-- Upgrade options UI (3 random choices between waves)
-- Upgrade definitions (turret damage +X%, generator rate +Y%)
-- Upgrade application to existing entities
-- Synergy tracking (buffs stack)
-- **Deliverable**: Choose upgrades, see immediate effects
-
-### Sprint 3.3: Difficulty Scaling
-- Wave scaling formula (total enemies, health, speed for both types)
-- Prey/Hunter ratio adjustments (e.g., more hunters at higher waves?)
-- Resource drop scaling
-- Balance tuning (dual threat becomes overwhelming around wave 10-15)
-- **Deliverable**: Both hunting and survival challenges escalate appropriately
+| Input | Action |
+|-------|--------|
+| **WASD** | Move player (cyan circle) |
+| **Mouse Click** | Place turret during build phase |
+| **H** | Toggle instructions (HTML version) |
+| **ESC** | Quit game (.NET version) |
 
 ---
 
-## Phase 4: Roguelike Structure (Week 7)
+## 🎨 Gameplay Elements
 
-### Sprint 4.1: Run Completion & Scoring
-- Run summary screen (waves completed, total time, enemies hunted, time rankings)
-- Time-based scoring system (faster = better rewards)
-- Restart flow (clear entities, reset state)
-- **Deliverable**: Complete run → see times/scores → restart for better performance
+### Player
+- **Cyan circle** - You control this with WASD keys
+- Hunt prey, avoid hunters, collect resources
 
-### Sprint 4.2: Meta-Progression
-- Meta-currency rewards (based on time performance and waves completed)
-- Persistent unlock system (new turret types, hunting speed bonuses)
-- Simple unlock UI (spend meta-currency between runs)
-- Save/load system for meta-progression and best times
-- **Deliverable**: Each run earns unlocks and records best times
+### Enemies
+- **Green circles (Prey)** - Flee from you, must be hunted down
+- **Red circles (Hunters)** - Chase you, must be avoided
+- Progressive AI: smooth movement, edge avoidance, wander behavior
 
----
+### Turrets
+- **Black squares** - Auto-targeting defensive structures
+- Max 15 turrets on board
+- Place strategically during upgrade phases
 
-## Phase 5: Polish & Juice (Week 8)
-
-### Sprint 5.1: Visual Feedback
-- Death animations/effects
-- Projectile trails
-- Screen shake on impacts
-- Resource pickup effects
-- **Deliverable**: Game feels satisfying to play
-
-### Sprint 5.2: Audio & UI Polish
-- Basic SFX (shoot, hit, death, pickup)
-- Background music loop
-- Clear UI (resources, wave counter, health)
-- Menu system (start, restart, quit)
-- **Deliverable**: MVP feels complete
+### Resources
+- **Gold coins** - Animated pickups from killed enemies
+- Collect to unlock upgrades between waves
 
 ---
 
-## Post-MVP Expansion Ideas (Future)
-- More turret types (AOE, slow/trap for prey, stun/knockback for hunters, guided missiles)
-- More enemy types within each archetype:
-  - PREY variants: fast runners, erratic dodgers, teleporters, burrowers
-  - HUNTER variants: fast rushers, tanky bruisers, trappers, ambushers
-- Boss waves every 5 waves (ultra-evasive prey + elite hunter combo)
-- Map obstacles/terrain (creates escape routes for prey, ambush points for hunters)
-- Player abilities (dash for closing distance on prey, shield/dodge for avoiding hunters)
-- Dynamic prey/hunter ratios (waves could be all-hunters for intense survival)
-- Upgrades that specifically benefit against prey vs hunters
+## 🔧 Upgrades
+
+Choose **2 random upgrades** between each wave:
+
+| Upgrade | Effect | Limit |
+|---------|--------|-------|
+| **Extra Turret** | Place +1 additional turret per round | 2 selections max (→ 3 turrets/round) |
+| **Faster Projectiles** | +10% projectile velocity | Unlimited |
+| **Better Resources** | +1 resource value per pickup | Unlimited |
+| **Slow Chase Enemies** | -5% hunter speed | Unlimited |
+| **Slow Fleeing Enemies** | -5% prey speed | Unlimited |
 
 ---
 
-**Estimated Timeline: 8 weeks part-time (2-3 hours/day)**
+## 📈 Difficulty Progression
+
+- **Prey count**: Fibonacci sequence (1, 1, 2, 3, 5, 8, 13...)
+- **Hunter count**: Linear scaling (wave × 2 per wave)
+- **Enemy speed**: +1% per wave, capped at 90% player speed
+- **Game over**: When any hunter catches you
+
+---
+
+## 🏗️ Project Structure
+
+### .NET Version
+```
+TurretGame.Core/          # Domain entities, interfaces (framework-agnostic)
+TurretGame.Infrastructure/ # MonoGame rendering, input, graphics
+TurretGame.Application/    # Game systems, managers, business logic
+TurretGame.Game/          # Entry point, dependency injection
+```
+
+### HTML5 Version
+```
+html/
+├── index.html      # Main game page with instructions
+├── game.js         # Core game loop, systems, rendering
+├── entities.js     # Player, Enemy, Turret, Projectile classes
+└── upgrades.js     # Upgrade definitions and management
+```
+
+---
+
+## 🚀 Quick Start
+
+### Play Immediately (HTML5)
+```bash
+# Clone the repo
+git clone https://github.com/DJ618/turret_game.git
+cd turret_game/html
+
+# Open in browser
+start index.html  # Windows
+open index.html   # macOS
+xdg-open index.html  # Linux
+```
+
+### Build & Run (.NET)
+```bash
+# Clone the repo
+git clone https://github.com/DJ618/turret_game.git
+cd turret_game
+
+# Build and run
+dotnet build
+cd TurretGame.Game
+dotnet run
+```
+
+---
+
+## 📊 Technical Highlights
+
+### Performance Optimizations
+- **Frame-based calculations**: Direction updates every 10 frames (both versions)
+- **Smooth interpolation**: Lerp-based direction changes prevent jerky movement
+- **Edge detection**: Unstuck behavior after 3 seconds near edges
+- **Efficient rendering**: Minimal draw calls, optimized collision detection
+
+### Architecture
+- **.NET Version**: Clean Architecture, Dependency Injection, Options Pattern
+- **HTML5 Version**: Class-based ES6, modular design, canvas optimization
+
+### Game Balance
+- **80/20 ratio**: ~80% prey (hunting challenge) + ~20% hunters (survival pressure)
+- **Speed cap**: Enemies never exceed 90% player speed (remains fair)
+- **Turret limit**: Max 15 prevents spam strategies
+- **Upgrade limits**: Extra Turret capped to prevent imbalance
+
+---
+
+## 🛠️ Development
+
+Both versions are actively maintained with feature parity.
+
+### Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make changes to **both versions** if applicable
+4. Test thoroughly
+5. Submit a pull request
+
+### Design Philosophy
+See [CLAUDE.md](CLAUDE.md) for detailed architecture and design decisions.
+
+---
+
+## 📚 Documentation
+
+- **[.NET Setup Guide](DOTNET_SETUP.md)** - Installation, configuration, troubleshooting
+- **[HTML5 Setup Guide](HTML_SETUP.md)** - Browser compatibility, hosting, development
+- **[Development Roadmap](ROADMAP.md)** - MVP phases, planned features, timeline
+- **[Project Definition](CLAUDE.md)** - Architecture, design principles, decisions
+
+---
+
+## 🎯 Game Design Philosophy
+
+### Core Dynamic
+**HUNT the many (prey) while SURVIVING the few (hunters)**
+
+This dual-threat system creates unique tension:
+- Offensive positioning required to catch fleeing prey
+- Defensive awareness required to avoid pursuing hunters
+- Risk/reward decisions: chase prey into danger zones?
+- Turret placement strategy: coverage vs. choke points
+
+### Psychological Hooks
+1. **Immediate feedback** - Action → result in <1 second
+2. **Progressive mastery** - Skill ceiling with visible improvement
+3. **Variable rewards** - Random upgrade options create variety
+4. **"One more round"** - Sessions designed for 3-5 minute runs
+5. **Compound progression** - Upgrades stack exponentially
+
+---
+
+## 🏆 Current Status
+
+**Phase**: Early development (Sprints 1.1-2.3 complete)
+
+**Implemented Features:**
+- ✅ Player movement (WASD)
+- ✅ Dual-threat AI (hunters chase, prey flee)
+- ✅ Collision detection and handling
+- ✅ Resource collection system
+- ✅ Wave-based spawning (Fibonacci + linear)
+- ✅ Turret placement and combat
+- ✅ Projectile system
+- ✅ Upgrade system (5 upgrades)
+- ✅ Progressive difficulty
+- ✅ Smooth AI with optimizations
+- ✅ Real-time UI (counters, statistics)
+- ✅ Game over and restart
+
+**Next Steps:**
+See [ROADMAP.md](ROADMAP.md) for upcoming features and timeline.
+
+---
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) file for details
+
+---
+
+## 🔗 Links
+
+- **[Full Roadmap](ROADMAP.md)** - Detailed development plan and future features
+- **[Repository](https://github.com/DJ618/turret_game)** - Source code and issues
+- **Game Design Document** - [CLAUDE.md](CLAUDE.md)
+
+---
+
+**Made with MonoGame and HTML5 Canvas** | Two versions, one addictive gameplay loop
