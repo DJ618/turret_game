@@ -119,6 +119,7 @@ public class Game1 : Microsoft.Xna.Framework.Game
         // Application layer services
         services.AddSingleton<EntityManager>();
         services.AddSingleton<GameStateManager>();
+        services.AddSingleton<UpgradeManager>();
         services.AddSingleton<ResourceManager>();
         services.AddSingleton<StatisticsManager>();
         services.AddSingleton<SpawnManager>();
@@ -203,6 +204,26 @@ public class Game1 : Microsoft.Xna.Framework.Game
                 }
             }
         }
+        // Handle upgrade selection
+        else if (_gameplayLoop.GameStateManager.IsChoosingUpgrade())
+        {
+            var inputService = _serviceProvider.GetRequiredService<IInputService>();
+
+            // Check for mouse click
+            if (inputService.IsLeftMouseButtonClicked())
+            {
+                var mousePosition = inputService.GetMousePosition();
+                int selectedOption = _uiRenderer.GetClickedUpgradeOption(
+                    mousePosition,
+                    _gameplayLoop.UpgradeManager.CurrentOptions.Count
+                );
+
+                if (selectedOption >= 0)
+                {
+                    _gameplayLoop.SelectUpgrade(selectedOption);
+                }
+            }
+        }
         // Handle turret placement
         else if (_gameplayLoop.GameStateManager.IsPlacingTurret())
         {
@@ -216,8 +237,8 @@ public class Game1 : Microsoft.Xna.Framework.Game
                 // Check if clicking on continue button
                 if (_uiRenderer.IsContinueButtonClicked(mousePosition))
                 {
-                    // Only allow continue if turret has been placed
-                    if (_gameplayLoop.TurretPlacedThisRound)
+                    // Only allow continue if all turrets have been placed
+                    if (!_gameplayLoop.CanPlaceMoreTurrets())
                     {
                         _gameplayLoop.ContinueToNextWave(_viewportBounds);
                     }
@@ -281,14 +302,22 @@ public class Game1 : Microsoft.Xna.Framework.Game
         );
 
         // Draw UI overlays
-        if (_gameplayLoop.GameStateManager.IsPlacingTurret())
+        if (_gameplayLoop.GameStateManager.IsChoosingUpgrade())
+        {
+            _uiRenderer.DrawUpgradeSelection(
+                _gameplayLoop.WaveManager.CurrentWave,
+                _gameplayLoop.UpgradeManager.CurrentOptions
+            );
+        }
+        else if (_gameplayLoop.GameStateManager.IsPlacingTurret())
         {
             var inputService = _serviceProvider.GetRequiredService<IInputService>();
             var mousePosition = inputService.GetMousePosition();
             _uiRenderer.DrawTurretPlacement(
                 _gameplayLoop.WaveManager.CurrentWave,
                 mousePosition,
-                _gameplayLoop.TurretPlacedThisRound
+                _gameplayLoop.TurretsPlacedThisRound,
+                _gameplayLoop.TurretsAllowedThisRound
             );
         }
         else if (_gameplayLoop.GameStateManager.IsGameOver())

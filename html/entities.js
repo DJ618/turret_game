@@ -379,3 +379,16 @@ function circleToCircle(x1, y1, r1, x2, y2, r2) {
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (r1 + r2);
 }
+
+// Circle to Square (AABB) collision detection
+function circleToSquare(circleX, circleY, circleRadius, squareX, squareY, squareHalfSize) {
+    // Find the closest point on the square to the circle
+    const closestX = Math.max(squareX - squareHalfSize, Math.min(circleX, squareX + squareHalfSize));
+    const closestY = Math.max(squareY - squareHalfSize, Math.min(circleY, squareY + squareHalfSize));
+
+    // Check if the distance from the closest point to the circle center is less than the radius
+    const dx = circleX - closestX;
+    const dy = circleY - closestY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < circleRadius;
+}

@@ -17,9 +17,11 @@ public class GameplayLoop
     private readonly TurretSystem _turretSystem;
     private readonly ProjectileSystem _projectileSystem;
     private readonly StatisticsManager _statisticsManager;
+    private readonly UpgradeManager _upgradeManager;
     private readonly IInputService _inputService;
 
-    private bool _turretPlacedThisRound;
+    private int _turretsPlacedThisRound;
+    private int _turretsAllowedThisRound;
 
     public GameplayLoop(
         Player player,
@@ -31,6 +33,7 @@ public class GameplayLoop
         TurretSystem turretSystem,
         ProjectileSystem projectileSystem,
         StatisticsManager statisticsManager,
+        UpgradeManager upgradeManager,
         IInputService inputService)
     {
         _player = player;
@@ -42,7 +45,9 @@ public class GameplayLoop
         _turretSystem = turretSystem;
         _projectileSystem = projectileSystem;
         _statisticsManager = statisticsManager;
+        _upgradeManager = upgradeManager;
         _inputService = inputService;
+        _turretsAllowedThisRound = 1; // Base is 1 turret per round
     }
 
     public Player Player => _player;
@@ -50,7 +55,9 @@ public class GameplayLoop
     public GameStateManager GameStateManager => _gameStateManager;
     public ResourceManager ResourceManager => _resourceManager;
     public WaveManager WaveManager => _waveManager;
-    public bool TurretPlacedThisRound => _turretPlacedThisRound;
+    public UpgradeManager UpgradeManager => _upgradeManager;
+    public int TurretsPlacedThisRound => _turretsPlacedThisRound;
+    public int TurretsAllowedThisRound => _turretsAllowedThisRound;
 
     public bool ShouldExit()
     {
@@ -59,26 +66,26 @@ public class GameplayLoop
 
     public void Update(float deltaTime, Bounds bounds)
     {
-        // Don't update if game is over or placing turret
-        if (_gameStateManager.IsGameOver() || _gameStateManager.IsPlacingTurret())
+        // Don't update if game is over, placing turret, or choosing upgrade
+        if (_gameStateManager.IsGameOver() || _gameStateManager.IsPlacingTurret() || _gameStateManager.IsChoosingUpgrade())
         {
             return;
         }
 
-        // Check if we should transition to turret placement or start next wave
+        // Check if we should transition to upgrade selection or start next wave
         if (_waveManager.ShouldStartNextWave())
         {
-            // Wave 1 starts immediately without turret placement
+            // Wave 1 starts immediately without upgrades
             if (_waveManager.CurrentWave == 0)
             {
                 _waveManager.StartNextWave(bounds, _player.Position);
                 return;
             }
-            // After wave 1, allow turret placement
+            // After wave 1, show upgrade selection
             else
             {
-                _gameStateManager.ChangeState(Core.State.GameState.PlacingTurret);
-                _turretPlacedThisRound = false; // Reset for new placement phase
+                _gameStateManager.ChangeState(Core.State.GameState.ChoosingUpgrade);
+                _upgradeManager.GenerateUpgradeOptions();
                 return;
             }
         }
@@ -101,17 +108,38 @@ public class GameplayLoop
         _entityManager.RemoveCollectedPickups();
     }
 
+    public void SelectUpgrade(int optionIndex)
+    {
+        // Only select if in ChoosingUpgrade state
+        if (!_gameStateManager.IsChoosingUpgrade())
+        {
+            return;
+        }
+
+        _upgradeManager.SelectUpgrade(optionIndex);
+
+        // Transition to turret placement
+        _gameStateManager.ChangeState(Core.State.GameState.PlacingTurret);
+        _turretsPlacedThisRound = 0;
+        _turretsAllowedThisRound = 1 + _upgradeManager.UpgradeState.ExtraTurretsPerRound;
+    }
+
     public void PlaceTurret(System.Numerics.Vector2 position)
     {
-        // Only place if in PlacingTurret state and haven't placed yet
-        if (!_gameStateManager.IsPlacingTurret() || _turretPlacedThisRound)
+        // Only place if in PlacingTurret state and haven't placed max turrets yet
+        if (!_gameStateManager.IsPlacingTurret() || _turretsPlacedThisRound >= _turretsAllowedThisRound)
         {
             return;
         }
 
         var turret = new Turret(position);
         _entityManager.AddTurret(turret);
-        _turretPlacedThisRound = true;
+        _turretsPlacedThisRound++;
+    }
+
+    public bool CanPlaceMoreTurrets()
+    {
+        return _turretsPlacedThisRound < _turretsAllowedThisRound;
     }
 
     public void ContinueToNextWave(Bounds bounds)
@@ -133,9 +161,11 @@ public class GameplayLoop
         _resourceManager.Reset();
         _statisticsManager.Reset();
         _waveManager.Reset();
+        _upgradeManager.Reset();
 
-        // Reset turret placement flag
-        _turretPlacedThisRound = false;
+        // Reset turret placement counters
+        _turretsPlacedThisRound = 0;
+        _turretsAllowedThisRound = 1;
 
         // Start wave 1
         _waveManager.StartNextWave(bounds, _player.Position);

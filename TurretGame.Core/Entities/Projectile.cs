@@ -8,21 +8,38 @@ public class Projectile
     public Vector2 Position { get; private set; }
     public Vector2 Velocity { get; private set; }
     public float Radius { get; set; } = 5f;
-    public float Speed { get; set; } = 500f; // Pixels per second
+    private float _speed = 500f; // Pixels per second
     public bool IsActive { get; set; } = true;
+
+    public float Speed
+    {
+        get => _speed;
+        set
+        {
+            _speed = value;
+            RecalculateVelocity();
+        }
+    }
+
+    private Vector2 _direction;
 
     public Projectile(Vector2 startPosition, Vector2 targetPosition)
     {
         Position = startPosition;
 
         // Calculate direction to target
-        var direction = targetPosition - startPosition;
-        if (direction.Length() > 0)
+        _direction = targetPosition - startPosition;
+        if (_direction.Length() > 0)
         {
-            direction = Vector2.Normalize(direction);
+            _direction = Vector2.Normalize(_direction);
         }
 
-        Velocity = direction * Speed;
+        RecalculateVelocity();
+    }
+
+    private void RecalculateVelocity()
+    {
+        Velocity = _direction * _speed;
     }
 
     public void Update(float deltaTime, float minX, float maxX, float minY, float maxY)

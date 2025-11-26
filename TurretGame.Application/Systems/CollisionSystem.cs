@@ -17,6 +17,35 @@ public class CollisionSystem
 
     public void CheckCollisions(Player player, EntityManager entityManager, Bounds bounds)
     {
+        // Check player-turret collisions (player cannot pass through turrets)
+        foreach (var turret in entityManager.Turrets)
+        {
+            if (CollisionDetection.CircleToSquare(
+                player.Position, player.Radius,
+                turret.Position, turret.Size))
+            {
+                // Push player away from turret
+                var direction = player.Position - turret.Position;
+                if (direction.Length() > 0)
+                {
+                    direction = System.Numerics.Vector2.Normalize(direction);
+
+                    // Calculate how far to push the player
+                    // Find closest point on square to player, then ensure player is at least their radius away
+                    float closestX = Math.Clamp(player.Position.X, turret.Position.X - turret.Size, turret.Position.X + turret.Size);
+                    float closestY = Math.Clamp(player.Position.Y, turret.Position.Y - turret.Size, turret.Position.Y + turret.Size);
+                    var closestPoint = new System.Numerics.Vector2(closestX, closestY);
+
+                    var pushDirection = player.Position - closestPoint;
+                    if (pushDirection.Length() > 0)
+                    {
+                        pushDirection = System.Numerics.Vector2.Normalize(pushDirection);
+                        player.SetPosition(closestPoint + pushDirection * player.Radius);
+                    }
+                }
+            }
+        }
+
         // Check player-enemy collisions
         foreach (var enemy in entityManager.Enemies)
         {
@@ -71,6 +100,38 @@ public class CollisionSystem
                         Math.Clamp(newPos2.X, bounds.MinX + enemy2.Radius, bounds.MaxX - enemy2.Radius),
                         Math.Clamp(newPos2.Y, bounds.MinY + enemy2.Radius, bounds.MaxY - enemy2.Radius)
                     ));
+                }
+            }
+        }
+
+        // Check enemy-turret collisions (enemies cannot pass through turrets)
+        foreach (var enemy in enemies)
+        {
+            if (!enemy.IsAlive) continue;
+
+            foreach (var turret in entityManager.Turrets)
+            {
+                if (CollisionDetection.CircleToSquare(
+                    enemy.Position, enemy.Radius,
+                    turret.Position, turret.Size))
+                {
+                    // Push enemy away from turret
+                    float closestX = Math.Clamp(enemy.Position.X, turret.Position.X - turret.Size, turret.Position.X + turret.Size);
+                    float closestY = Math.Clamp(enemy.Position.Y, turret.Position.Y - turret.Size, turret.Position.Y + turret.Size);
+                    var closestPoint = new System.Numerics.Vector2(closestX, closestY);
+
+                    var pushDirection = enemy.Position - closestPoint;
+                    if (pushDirection.Length() > 0)
+                    {
+                        pushDirection = System.Numerics.Vector2.Normalize(pushDirection);
+                        var newPosition = closestPoint + pushDirection * enemy.Radius;
+
+                        // Clamp to bounds
+                        enemy.SetPosition(new System.Numerics.Vector2(
+                            Math.Clamp(newPosition.X, bounds.MinX + enemy.Radius, bounds.MaxX - enemy.Radius),
+                            Math.Clamp(newPosition.Y, bounds.MinY + enemy.Radius, bounds.MaxY - enemy.Radius)
+                        ));
+                    }
                 }
             }
         }

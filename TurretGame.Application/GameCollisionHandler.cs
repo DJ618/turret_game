@@ -44,15 +44,35 @@ public class GameCollisionHandler : ICollisionHandler
             _statisticsManager.IncrementEnemiesKilled();
 
             // Spawn resource pickup with random offset from enemy's position
-            var offset = GetRandomOffset(80f, 150f); // Random distance between 80-150 pixels
-            var pickupPosition = enemy.Position + offset;
-
-            // Clamp pickup position within bounds (accounting for pickup radius)
+            // Try multiple times to find a position that doesn't overlap with turrets
             const float pickupRadius = 8f; // Match ResourcePickup.Radius default
-            pickupPosition = new Vector2(
-                Math.Clamp(pickupPosition.X, bounds.MinX + pickupRadius, bounds.MaxX - pickupRadius),
-                Math.Clamp(pickupPosition.Y, bounds.MinY + pickupRadius, bounds.MaxY - pickupRadius)
-            );
+            Vector2 pickupPosition = enemy.Position;
+            bool foundValidPosition = false;
+
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                var offset = GetRandomOffset(80f, 150f); // Random distance between 80-150 pixels
+                pickupPosition = enemy.Position + offset;
+
+                // Clamp pickup position within bounds (accounting for pickup radius)
+                pickupPosition = new Vector2(
+                    Math.Clamp(pickupPosition.X, bounds.MinX + pickupRadius, bounds.MaxX - pickupRadius),
+                    Math.Clamp(pickupPosition.Y, bounds.MinY + pickupRadius, bounds.MaxY - pickupRadius)
+                );
+
+                // Check if position overlaps with any turret
+                if (!IsPositionOverlappingTurret(pickupPosition, pickupRadius))
+                {
+                    foundValidPosition = true;
+                    break;
+                }
+            }
+
+            // If we couldn't find a valid position after 10 attempts, use enemy's position
+            if (!foundValidPosition)
+            {
+                pickupPosition = enemy.Position;
+            }
 
             var pickup = new ResourcePickup(pickupPosition, 1);
             _entityManager.AddPickup(pickup);
@@ -79,5 +99,17 @@ public class GameCollisionHandler : ICollisionHandler
             (float)Math.Cos(angle) * distance,
             (float)Math.Sin(angle) * distance
         );
+    }
+
+    private bool IsPositionOverlappingTurret(Vector2 position, float radius)
+    {
+        foreach (var turret in _entityManager.Turrets)
+        {
+            if (CollisionDetection.CircleToSquare(position, radius, turret.Position, turret.Size))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

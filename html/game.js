@@ -1,8 +1,34 @@
 // Game State
 const GameState = {
     PLAYING: 'playing',
+    CHOOSING_UPGRADE: 'choosing_upgrade',
     PLACING_TURRET: 'placing_turret',
     GAME_OVER: 'gameover'
+};
+
+// Upgrade Definitions
+const Upgrades = {
+    EXTRA_TURRET: {
+        name: 'Extra Turret',
+        description: '+1 turret placement per round',
+        apply: (state) => {
+            state.extraTurretsPerRound++;
+        }
+    },
+    FASTER_PROJECTILES: {
+        name: 'Faster Projectiles',
+        description: '+25% projectile velocity',
+        apply: (state) => {
+            state.projectileVelocityMultiplier *= 1.25;
+        }
+    },
+    BETTER_RESOURCES: {
+        name: 'Better Resources',
+        description: '+1 resource value per pickup',
+        apply: (state) => {
+            state.resourceValueBonus++;
+        }
+    }
 };
 
 // Configuration
@@ -39,8 +65,17 @@ class Game {
         this.resourceCount = 0;
         this.enemiesKilled = 0;
 
+        // Upgrade state
+        this.upgradeState = {
+            extraTurretsPerRound: 0,
+            projectileVelocityMultiplier: 1.0,
+            resourceValueBonus: 0
+        };
+        this.currentUpgradeOptions = [];
+
         // Turret placement
-        this.turretPlacedThisRound = false;
+        this.turretsPlacedThisRound = 0;
+        this.turretsAllowedThisRound = 1;
 
         // Initialize entities
         this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
@@ -91,15 +126,26 @@ class Game {
     }
 
     handleMouseClick() {
-        if (this.state === GameState.PLACING_TURRET) {
+        if (this.state === GameState.CHOOSING_UPGRADE) {
+            // Check which upgrade was clicked
+            for (let i = 0; i < this.currentUpgradeOptions.length; i++) {
+                if (this.isUpgradeButtonClicked(this.mouseX, this.mouseY, i)) {
+                    this.selectUpgrade(i);
+                    break;
+                }
+            }
+        }
+        else if (this.state === GameState.PLACING_TURRET) {
             // Check if clicking continue button
             if (this.isContinueButtonClicked(this.mouseX, this.mouseY)) {
-                if (this.turretPlacedThisRound) {
+                if (this.canPlaceMoreTurrets()) {
+                    // Still can place more, do nothing
+                } else {
                     this.continueToNextWave();
                 }
             }
             // Otherwise, place turret
-            else if (!this.turretPlacedThisRound) {
+            else if (this.canPlaceMoreTurrets()) {
                 this.placeTurret(this.mouseX, this.mouseY);
             }
         }
@@ -179,14 +225,47 @@ class Game {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    generateUpgradeOptions() {
+        // Create array of all upgrade types
+        const allUpgrades = Object.values(Upgrades);
+
+        // Shuffle and select 3 random upgrades
+        const shuffled = allUpgrades.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        this.currentUpgradeOptions = shuffled.slice(0, Math.min(3, shuffled.length));
+    }
+
+    selectUpgrade(optionIndex) {
+        if (optionIndex < 0 || optionIndex >= this.currentUpgradeOptions.length) {
+            return;
+        }
+
+        const selectedUpgrade = this.currentUpgradeOptions[optionIndex];
+        selectedUpgrade.apply(this.upgradeState);
+        this.currentUpgradeOptions = [];
+
+        // Transition to turret placement
+        this.state = GameState.PLACING_TURRET;
+        this.turretsPlacedThisRound = 0;
+        this.turretsAllowedThisRound = 1 + this.upgradeState.extraTurretsPerRound;
+    }
+
     placeTurret(x, y) {
-        if (this.state !== GameState.PLACING_TURRET || this.turretPlacedThisRound) {
+        if (this.state !== GameState.PLACING_TURRET || !this.canPlaceMoreTurrets()) {
             return;
         }
 
         const turret = new Turret(x, y);
         this.turrets.push(turret);
-        this.turretPlacedThisRound = true;
+        this.turretsPlacedThisRound++;
+    }
+
+    canPlaceMoreTurrets() {
+        return this.turretsPlacedThisRound < this.turretsAllowedThisRound;
     }
 
     continueToNextWave() {
@@ -201,6 +280,28 @@ class Game {
             }
         }
         return true; // All prey are dead (hunters don't matter)
+    }
+
+    isUpgradeButtonClicked(x, y, optionIndex) {
+        const buttonRect = this.getUpgradeButtonRect(optionIndex);
+        return x >= buttonRect.x && x <= buttonRect.x + buttonRect.width &&
+               y >= buttonRect.y && y <= buttonRect.y + buttonRect.height;
+    }
+
+    getUpgradeButtonRect(optionIndex) {
+        const buttonWidth = 350;
+        const buttonHeight = 120;
+        const spacing = 40;
+        const totalWidth = buttonWidth * 3 + spacing * 2;
+        const startX = this.canvas.width / 2 - totalWidth / 2;
+        const startY = this.canvas.height / 2 - 50;
+
+        return {
+            x: startX + (buttonWidth + spacing) * optionIndex,
+            y: startY,
+            width: buttonWidth,
+            height: buttonHeight
+        };
     }
 
     isContinueButtonClicked(x, y) {
@@ -239,17 +340,45 @@ class Game {
 
     spawnResourcePickup(x, y) {
         // Random offset for pickup spawn (80-150 pixels)
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 80 + Math.random() * 70;
-        let pickupX = x + Math.cos(angle) * distance;
-        let pickupY = y + Math.sin(angle) * distance;
-
-        // Clamp to bounds
+        // Try multiple times to find a position that doesn't overlap with turrets
         const pickupRadius = 8;
-        pickupX = Math.max(pickupRadius, Math.min(this.canvas.width - pickupRadius, pickupX));
-        pickupY = Math.max(pickupRadius, Math.min(this.canvas.height - pickupRadius, pickupY));
+        let pickupX = x;
+        let pickupY = y;
+        let foundValidPosition = false;
 
-        const pickup = new ResourcePickup(pickupX, pickupY, 1);
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 80 + Math.random() * 70;
+            pickupX = x + Math.cos(angle) * distance;
+            pickupY = y + Math.sin(angle) * distance;
+
+            // Clamp to bounds
+            pickupX = Math.max(pickupRadius, Math.min(this.canvas.width - pickupRadius, pickupX));
+            pickupY = Math.max(pickupRadius, Math.min(this.canvas.height - pickupRadius, pickupY));
+
+            // Check if position overlaps with any turret
+            let overlapsWithTurret = false;
+            for (const turret of this.turrets) {
+                if (circleToSquare(pickupX, pickupY, pickupRadius, turret.x, turret.y, turret.size)) {
+                    overlapsWithTurret = true;
+                    break;
+                }
+            }
+
+            if (!overlapsWithTurret) {
+                foundValidPosition = true;
+                break;
+            }
+        }
+
+        // If we couldn't find a valid position after 10 attempts, use the enemy's position
+        if (!foundValidPosition) {
+            pickupX = x;
+            pickupY = y;
+        }
+
+        const resourceValue = 1 + this.upgradeState.resourceValueBonus;
+        const pickup = new ResourcePickup(pickupX, pickupY, resourceValue);
         this.pickups.push(pickup);
     }
 
@@ -258,8 +387,8 @@ class Game {
     }
 
     update(deltaTime) {
-        if (this.state === GameState.GAME_OVER || this.state === GameState.PLACING_TURRET) {
-            return; // Don't update if game is over or placing turret
+        if (this.state === GameState.GAME_OVER || this.state === GameState.PLACING_TURRET || this.state === GameState.CHOOSING_UPGRADE) {
+            return; // Don't update if game is over, placing turret, or choosing upgrade
         }
 
         // Clean up dead entities first (so wave completion check works correctly)
@@ -269,10 +398,17 @@ class Game {
 
         // Handle wave transitions
         if (this.shouldStartNextWave()) {
-            // Wave 1 just completed, now allow turret placement for wave 2+
-            if (this.currentWave >= 1) {
-                this.state = GameState.PLACING_TURRET;
-                this.turretPlacedThisRound = false;
+            // Wave 1 starts immediately without upgrades
+            if (this.currentWave === 0) {
+                // Wave 1 just completed, transition to upgrade selection for wave 2+
+                this.state = GameState.CHOOSING_UPGRADE;
+                this.generateUpgradeOptions();
+                return;
+            }
+            // After wave 1, show upgrade selection
+            else if (this.currentWave >= 1) {
+                this.state = GameState.CHOOSING_UPGRADE;
+                this.generateUpgradeOptions();
                 return;
             }
         }
@@ -286,6 +422,26 @@ class Game {
             0,
             this.canvas.height
         );
+
+        // Check player-turret collisions (player cannot pass through turrets)
+        for (const turret of this.turrets) {
+            if (circleToSquare(this.player.x, this.player.y, this.player.radius, turret.x, turret.y, turret.size)) {
+                // Push player away from turret
+                const closestX = Math.max(turret.x - turret.size, Math.min(this.player.x, turret.x + turret.size));
+                const closestY = Math.max(turret.y - turret.size, Math.min(this.player.y, turret.y + turret.size));
+
+                const pushDirX = this.player.x - closestX;
+                const pushDirY = this.player.y - closestY;
+                const pushLength = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+
+                if (pushLength > 0) {
+                    const normalizedPushX = pushDirX / pushLength;
+                    const normalizedPushY = pushDirY / pushLength;
+                    this.player.x = closestX + normalizedPushX * this.player.radius;
+                    this.player.y = closestY + normalizedPushY * this.player.radius;
+                }
+            }
+        }
 
         // Update enemies
         for (const enemy of this.enemies) {
@@ -350,6 +506,34 @@ class Game {
             }
         }
 
+        // Check enemy-turret collisions (enemies cannot pass through turrets)
+        for (const enemy of this.enemies) {
+            if (!enemy.isAlive) continue;
+
+            for (const turret of this.turrets) {
+                if (circleToSquare(enemy.x, enemy.y, enemy.radius, turret.x, turret.y, turret.size)) {
+                    // Push enemy away from turret
+                    const closestX = Math.max(turret.x - turret.size, Math.min(enemy.x, turret.x + turret.size));
+                    const closestY = Math.max(turret.y - turret.size, Math.min(enemy.y, turret.y + turret.size));
+
+                    const pushDirX = enemy.x - closestX;
+                    const pushDirY = enemy.y - closestY;
+                    const pushLength = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+
+                    if (pushLength > 0) {
+                        const normalizedPushX = pushDirX / pushLength;
+                        const normalizedPushY = pushDirY / pushLength;
+                        const newX = closestX + normalizedPushX * enemy.radius;
+                        const newY = closestY + normalizedPushY * enemy.radius;
+
+                        // Clamp to bounds
+                        enemy.x = Math.max(enemy.radius, Math.min(this.canvas.width - enemy.radius, newX));
+                        enemy.y = Math.max(enemy.radius, Math.min(this.canvas.height - enemy.radius, newY));
+                    }
+                }
+            }
+        }
+
         // Update turrets
         for (const turret of this.turrets) {
             turret.update(deltaTime);
@@ -370,9 +554,29 @@ class Game {
                 }
 
                 if (nearestEnemy) {
-                    const projectile = new Projectile(turret.x, turret.y, nearestEnemy.x, nearestEnemy.y);
-                    this.projectiles.push(projectile);
-                    turret.resetShootCooldown();
+                    // Calculate direction to enemy
+                    const dirX = nearestEnemy.x - turret.x;
+                    const dirY = nearestEnemy.y - turret.y;
+                    const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+
+                    if (dirLength > 0) {
+                        const normalizedDirX = dirX / dirLength;
+                        const normalizedDirY = dirY / dirLength;
+
+                        // Spawn projectile outside the turret's bounding box
+                        // Use diagonal distance (size * sqrt(2)) plus a small buffer
+                        const spawnDistance = turret.size * 1.5; // 1.414 (sqrt(2)) rounded up for safety
+                        const spawnX = turret.x + normalizedDirX * spawnDistance;
+                        const spawnY = turret.y + normalizedDirY * spawnDistance;
+
+                        const projectile = new Projectile(spawnX, spawnY, nearestEnemy.x, nearestEnemy.y);
+                        // Apply velocity upgrade
+                        projectile.speed *= this.upgradeState.projectileVelocityMultiplier;
+                        projectile.velocityX *= this.upgradeState.projectileVelocityMultiplier;
+                        projectile.velocityY *= this.upgradeState.projectileVelocityMultiplier;
+                        this.projectiles.push(projectile);
+                        turret.resetShootCooldown();
+                    }
                 }
             }
         }
@@ -380,6 +584,19 @@ class Game {
         // Update projectiles
         for (const projectile of this.projectiles) {
             projectile.update(deltaTime, 0, this.canvas.width, 0, this.canvas.height);
+
+            // Check projectile-turret collision (projectiles are destroyed by turrets)
+            if (projectile.isActive) {
+                let hitTurret = false;
+                for (const turret of this.turrets) {
+                    if (circleToSquare(projectile.x, projectile.y, projectile.radius, turret.x, turret.y, turret.size)) {
+                        projectile.isActive = false;
+                        hitTurret = true;
+                        break;
+                    }
+                }
+                if (hitTurret) continue;
+            }
 
             // Check projectile-enemy collision
             if (projectile.isActive) {
@@ -448,6 +665,11 @@ class Game {
         this.ctx.fillStyle = 'white';
         this.ctx.fillText(`Wave: ${this.currentWave}`, 20, 80);
 
+        // Draw upgrade selection overlay
+        if (this.state === GameState.CHOOSING_UPGRADE) {
+            this.drawUpgradeSelection();
+        }
+
         // Draw turret placement overlay
         if (this.state === GameState.PLACING_TURRET) {
             this.drawTurretPlacement();
@@ -457,6 +679,59 @@ class Game {
         if (this.state === GameState.GAME_OVER) {
             this.drawGameOver();
         }
+    }
+
+    drawUpgradeSelection() {
+        // Semi-transparent black overlay
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Title text
+        this.ctx.fillStyle = '#00FF00'; // Green
+        this.ctx.font = 'bold 56px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(`Wave ${this.currentWave} Complete!`, this.canvas.width / 2, this.canvas.height / 2 - 200);
+
+        // Instruction text
+        this.ctx.fillStyle = '#FFFF00'; // Yellow
+        this.ctx.font = 'bold 36px Arial';
+        this.ctx.fillText('Choose an Upgrade', this.canvas.width / 2, this.canvas.height / 2 - 130);
+
+        // Draw upgrade options
+        for (let i = 0; i < this.currentUpgradeOptions.length; i++) {
+            this.drawUpgradeButton(i);
+        }
+    }
+
+    drawUpgradeButton(optionIndex) {
+        const upgrade = this.currentUpgradeOptions[optionIndex];
+        const buttonRect = this.getUpgradeButtonRect(optionIndex);
+
+        // Check if mouse is hovering
+        const isHovering = this.mouseX >= buttonRect.x && this.mouseX <= buttonRect.x + buttonRect.width &&
+                          this.mouseY >= buttonRect.y && this.mouseY <= buttonRect.y + buttonRect.height;
+
+        // Button background (brighter if hovering)
+        this.ctx.fillStyle = isHovering ? 'rgba(80, 80, 150, 0.9)' : 'rgba(50, 50, 100, 0.9)';
+        this.ctx.fillRect(buttonRect.x, buttonRect.y, buttonRect.width, buttonRect.height);
+
+        // Button border
+        this.ctx.strokeStyle = isHovering ? '#FFFFFF' : '#AAAAAA';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(buttonRect.x, buttonRect.y, buttonRect.width, buttonRect.height);
+
+        // Upgrade name
+        this.ctx.fillStyle = '#FFD700'; // Gold
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(upgrade.name, buttonRect.x + buttonRect.width / 2, buttonRect.y + 40);
+
+        // Upgrade description
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '22px Arial';
+        this.ctx.fillText(upgrade.description, buttonRect.x + buttonRect.width / 2, buttonRect.y + 80);
     }
 
     drawTurretPlacement() {
@@ -469,16 +744,21 @@ class Game {
         this.ctx.font = 'bold 48px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(`Wave ${this.currentWave} Complete!`, this.canvas.width / 2, this.canvas.height / 2 - 150);
+        this.ctx.fillText('Place Your Turrets', this.canvas.width / 2, this.canvas.height / 2 - 150);
 
         // Instruction text
-        const instructionText = this.turretPlacedThisRound ? 'Turret placed! Click CONTINUE' : 'Click to place a turret';
-        this.ctx.fillStyle = this.turretPlacedThisRound ? '#FFFF00' : 'white'; // Yellow if placed
+        const placedText = `Turrets Placed: ${this.turretsPlacedThisRound} / ${this.turretsAllowedThisRound}`;
+        this.ctx.fillStyle = 'white';
         this.ctx.font = 'bold 32px Arial';
-        this.ctx.fillText(instructionText, this.canvas.width / 2, this.canvas.height / 2 - 70);
+        this.ctx.fillText(placedText, this.canvas.width / 2, this.canvas.height / 2 - 90);
 
-        // Draw turret preview at mouse position (only if not placed yet)
-        if (!this.turretPlacedThisRound) {
+        const instructionText = this.canPlaceMoreTurrets() ? 'Click to place a turret' : 'Click CONTINUE to start next wave';
+        this.ctx.fillStyle = this.canPlaceMoreTurrets() ? 'white' : '#FFFF00'; // Yellow if done
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.fillText(instructionText, this.canvas.width / 2, this.canvas.height / 2 - 40);
+
+        // Draw turret preview at mouse position (only if can still place)
+        if (this.canPlaceMoreTurrets()) {
             const turretSize = 30;
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             this.ctx.fillRect(

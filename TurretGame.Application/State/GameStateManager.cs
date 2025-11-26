@@ -17,6 +17,7 @@ public class GameStateManager
     }
 
     public bool IsPlaying() => CurrentState == GameState.Playing;
+    public bool IsChoosingUpgrade() => CurrentState == GameState.ChoosingUpgrade;
     public bool IsPlacingTurret() => CurrentState == GameState.PlacingTurret;
     public bool IsGameOver() => CurrentState == GameState.GameOver;
 
